@@ -8,12 +8,12 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   // Seed super admin
-  const superAdminPassword = await bcrypt.hash("SuperAdmin@123", 12);
+  const superAdminPassword = await bcrypt.hash("12345678", 12);
   const superAdmin = await prisma.user.upsert({
-    where: { email: "superadmin@example.com" },
+    where: { email: "superadmin@yopmail.com" },
     update: {},
     create: {
-      email: "superadmin@example.com",
+      email: "superadmin@yopmail.com",
       name: "Super Admin",
       password: superAdminPassword,
       role: Role.SUPER_ADMIN,
@@ -32,7 +32,7 @@ async function main() {
       email: "admin@example.com",
       name: "Admin User",
       password: adminPassword,
-      role: Role.ADMIN,
+      role: Role.SUPER_ADMIN,
       isEmailVerified: true,
       isActive: true,
     },

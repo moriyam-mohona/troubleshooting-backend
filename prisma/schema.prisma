@@ -9,7 +9,6 @@ datasource db {
 
 enum Role {
   USER
-  ADMIN
   SUPER_ADMIN
 }
 
@@ -35,7 +34,6 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  posts         Post[]
   otpTokens     OtpToken[]
   refreshTokens RefreshToken[]
 }
@@ -66,78 +64,76 @@ model RefreshToken {
   @@index([userId])
 }
 
-model Post {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String   @db.ObjectId
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+// model Category {
+//   id            String        @id @default(cuid())
+//   name          String
+//   subtitle      String
+//   subcategories Subcategory[]
 
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
 
-model Category {
-  id            String        @id @default(cuid())
-  name          String
-  subtitle      String
-  subcategories Subcategory[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-}
+// model Subcategory {
+//   id         String         @id @default(cuid())
+//   name       String
+//   categoryId String
+//   category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+//   questions  QuestionNode[]
 
-model Subcategory {
-  id         String         @id @default(cuid())
-  name       String
-  categoryId String
-  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  questions  QuestionNode[]
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-}
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
 
-model QuestionNode {
-  id             String      @id @default(cuid())
-  subcategoryId  String
-  subcategory    Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  
-  questionText   String      @db.Text
-  selectedOption OptionChoice @default(YES)
-  // Nullable reference: If this question is a nested sub-question under a parent branch
-  parentBranchId String?
-  parentBranch   TreeBranch? @relation("BranchSubQuestions", fields: [parentBranchId], references: [id], onDelete: Cascade)
-  // Relation: Both YES and NO branches configured for this question
-  branches       TreeBranch[] @relation("QuestionBranches")
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  @@index([subcategoryId])
-  @@index([parentBranchId])
-}
+// model QuestionNode {
+//   id            String      @id @default(cuid())
+//   subcategoryId String
+//   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
 
-model TreeBranch {
-  id             String         @id @default(cuid())
-  questionId     String
-  question       QuestionNode   @relation("QuestionBranches", fields: [questionId], references: [id], onDelete: Cascade)
-  
-  label          OptionChoice   // YES or NO
-  // Follow-up sub-questions linked under this specific option path
-  childQuestions QuestionNode[] @relation("BranchSubQuestions")
-  // Optional Diagnosis / Answer outcome attached to this option path
-  diagnosis      Diagnosis?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  @@index([questionId])
-}
+//   questionText   String       @db.Text
+//   selectedOption OptionChoice @default(YES)
 
-// 5. DIAGNOSIS (Outcome / Solution)
+//   // Nullable reference: If this question is a nested sub-question under a parent branch
+//   parentBranchId String?
+//   parentBranch   TreeBranch? @relation("BranchSubQuestions", fields: [parentBranchId], references: [id], onDelete: Cascade)
 
-model Diagnosis {
-  id             String     @id @default(cuid())
-  branchId       String     @unique
-  branch         TreeBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  whatsHappening String     @db.Text
-  recommendedFix String     @db.Text
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-}
+//   // Relation: Both YES and NO branches configured for this question
+//   branches TreeBranch[] @relation("QuestionBranches")
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([subcategoryId])
+//   @@index([parentBranchId])
+// }
+
+// model TreeBranch {
+//   id         String       @id @default(cuid())
+//   questionId String
+//   question   QuestionNode @relation("QuestionBranches", fields: [questionId], references: [id], onDelete: Cascade)
+
+//   label OptionChoice // YES or NO
+
+//   // Follow-up sub-questions linked under this specific option path
+//   childQuestions QuestionNode[] @relation("BranchSubQuestions")
+
+//   // Optional Diagnosis / Answer outcome attached to this option path
+//   diagnosis Diagnosis?
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([questionId])
+// }
+
+// // 5. DIAGNOSIS (Outcome / Solution)
+
+// model Diagnosis {
+//   id             String     @id @default(cuid())
+//   branchId       String     @unique
+//   branch         TreeBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+//   whatsHappening String     @db.Text
+//   recommendedFix String     @db.Text
+//   createdAt      DateTime   @default(now())
+//   updatedAt      DateTime   @updatedAt
+// }
