@@ -95,8 +95,11 @@ const login = async (loginData: ILoginInput) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password.");
   }
 
-  if (!user.isActive) {
-    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been deactivated.");
+  if (!user.isActive || user.status === "BLOCKED") {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "Your account has been blocked or deactivated. Please contact support."
+    );
   }
 
   const isPasswordValid = await compareItem(loginData.password, user.password);

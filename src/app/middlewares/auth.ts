@@ -50,7 +50,7 @@ const auth = (...roles: string[]) => {
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        select: { id: true, email: true, role: true, isActive: true },
+        select: { id: true, email: true, role: true, isActive: true, status: true },
       });
 
       if (!user) {
@@ -60,10 +60,10 @@ const auth = (...roles: string[]) => {
         );
       }
 
-      if (!user.isActive) {
+      if (!user.isActive || user.status === "BLOCKED") {
         throw new ApiError(
           httpStatus.FORBIDDEN,
-          "Your account has been deactivated. Please contact support."
+          "Your account has been blocked or deactivated. Please contact support."
         );
       }
 

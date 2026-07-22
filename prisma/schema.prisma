@@ -12,6 +12,11 @@ enum Role {
   SUPER_ADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
 enum OtpPurpose {
   EMAIL_VERIFICATION
   PASSWORD_RESET
@@ -23,16 +28,17 @@ enum OptionChoice {
 }
 
 model User {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  email           String    @unique
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  email           String     @unique
   password        String
   name            String?
-  role            Role      @default(USER)
-  isEmailVerified Boolean   @default(false)
-  isActive        Boolean   @default(true)
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  isEmailVerified Boolean    @default(false)
+  isActive        Boolean    @default(true)
   lastLogin       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   otpTokens     OtpToken[]
   refreshTokens RefreshToken[]
