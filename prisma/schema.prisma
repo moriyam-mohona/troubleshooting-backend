@@ -42,6 +42,7 @@ model User {
 
   otpTokens     OtpToken[]
   refreshTokens RefreshToken[]
+  userQuestions UserQuestion[]
 }
 
 model OtpToken {
@@ -86,10 +87,38 @@ model Subcategory {
   categoryId String   @db.ObjectId
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
+  userQuestions UserQuestion[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([categoryId])
+}
+
+enum UserQuestionStatus {
+  PENDING
+  ANSWERED
+}
+
+model UserQuestion {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String             @db.ObjectId
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategoryId String             @db.ObjectId
+  subcategory   Subcategory        @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+
+  description   String
+  image         String?
+  status        UserQuestionStatus @default(PENDING)
+  adminReply    String?
+  repliedAt     DateTime?
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([subcategoryId])
+  @@index([status])
 }
 
 
