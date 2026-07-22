@@ -104,6 +104,15 @@ const login = async (loginData: ILoginInput) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password.");
   }
 
+  if (!user.isEmailVerified) {
+    // Generate and send a new verification OTP
+    await createAndSendOtp(user.email, OtpPurpose.EMAIL_VERIFICATION, user.id);
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "Your email is not verified. A new verification OTP has been sent to your email."
+    );
+  }
+
   const payload: ITokenPayload = {
     id: user.id,
     email: user.email,
@@ -230,13 +239,35 @@ const verifyEmail = async ({ email, otp }: IVerifyEmailInput) => {
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { isEmailVerified: true },
+      data: { isEmailVerified: true, lastLogin: new Date() },
     }),
     prisma.otpToken.update({
       where: { id: otpRecord.id },
       data: { used: true },
     }),
   ]);
+
+  const payload: ITokenPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  };
+
+  const { accessToken, refreshToken } = jwtHelpers.generateAuthTokens(payload);
+
+  await saveRefreshToken(user.id, refreshToken);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isEmailVerified: true,
+    },
+  };
 };
 
 const resendOtp = async ({ email, purpose }: IResendOtpInput) => {

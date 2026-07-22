@@ -23,8 +23,9 @@ const sendResponse = <T>(
     responseBody.meta = jsonData.meta;
   }
 
-  // Preserve falsy values (0, false, "") — only exclude undefined
-  responseBody.data = jsonData.data !== undefined ? jsonData.data : null;
+  if (jsonData.data !== undefined && jsonData.data !== null) {
+    responseBody.data = jsonData.data;
+  }
 
   res.status(jsonData.statusCode).json(responseBody);
 };

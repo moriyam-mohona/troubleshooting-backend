@@ -42,17 +42,16 @@ const logout = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "Logged out successfully.",
-    data: null,
   });
 });
 
 const verifyEmail = catchAsync(async (req: Request, res: Response) => {
-  await AuthService.verifyEmail(req.body);
+  const result = await AuthService.verifyEmail(req.body);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Email verified successfully.",
-    data: null,
+    data: result,
   });
 });
 
@@ -62,7 +61,6 @@ const resendOtp = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "OTP sent successfully. Please check your email.",
-    data: null,
   });
 });
 
@@ -73,7 +71,6 @@ const forgotPassword = catchAsync(async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     // Deliberately vague to prevent user enumeration
     message: "If that email exists, a password reset OTP has been sent.",
-    data: null,
   });
 });
 
@@ -93,7 +90,6 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "Password reset successfully. Please log in with your new password.",
-    data: null,
   });
 });
 
@@ -103,7 +99,6 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "Password changed successfully. Please log in again.",
-    data: null,
   });
 });
 
@@ -124,7 +119,6 @@ const deleteAccount = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "Account deleted successfully.",
-    data: null,
   });
 });
 
