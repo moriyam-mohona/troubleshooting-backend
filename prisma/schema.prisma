@@ -70,26 +70,28 @@ model RefreshToken {
   @@index([userId])
 }
 
-// model Category {
-//   id            String        @id @default(cuid())
-//   name          String
-//   subtitle      String
-//   subcategories Subcategory[]
+model Category {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  subtitle      String
+  subcategories Subcategory[]
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-// model Subcategory {
-//   id         String         @id @default(cuid())
-//   name       String
-//   categoryId String
-//   category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-//   questions  QuestionNode[]
+model Subcategory {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  categoryId String   @db.ObjectId
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}
+
 
 // model QuestionNode {
 //   id            String      @id @default(cuid())
