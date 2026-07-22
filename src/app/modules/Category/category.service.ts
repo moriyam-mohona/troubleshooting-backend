@@ -25,10 +25,18 @@ const createCategory = async (payload: ICreateCategoryInput) => {
     },
     include: {
       subcategories: true,
+      _count: {
+        select: {
+          subcategories: true,
+        },
+      },
     },
   });
 
-  return category;
+  return {
+    ...category,
+    subcategoryCount: category.subcategories.length,
+  };
 };
 
 const getAllCategories = async (filters: ICategoryFilterRequest) => {
@@ -56,13 +64,23 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
           createdAt: "asc",
         },
       },
+      _count: {
+        select: {
+          subcategories: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
     },
   });
 
-  return categories;
+  const formattedCategories = categories.map((category) => ({
+    ...category,
+    subcategoryCount: category.subcategories.length,
+  }));
+
+  return formattedCategories;
 };
 
 const getSingleCategory = async (id: string) => {
@@ -74,6 +92,11 @@ const getSingleCategory = async (id: string) => {
           createdAt: "asc",
         },
       },
+      _count: {
+        select: {
+          subcategories: true,
+        },
+      },
     },
   });
 
@@ -81,7 +104,10 @@ const getSingleCategory = async (id: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  return category;
+  return {
+    ...category,
+    subcategoryCount: category.subcategories.length,
+  };
 };
 
 const getSubcategoriesByCategoryId = async (categoryId: string) => {
@@ -117,10 +143,18 @@ const updateCategory = async (id: string, payload: IUpdateCategoryInput) => {
     data: payload,
     include: {
       subcategories: true,
+      _count: {
+        select: {
+          subcategories: true,
+        },
+      },
     },
   });
 
-  return updatedCategory;
+  return {
+    ...updatedCategory,
+    subcategoryCount: updatedCategory.subcategories.length,
+  };
 };
 
 const deleteCategory = async (id: string) => {
@@ -143,7 +177,10 @@ const deleteCategory = async (id: string) => {
     },
   });
 
-  return deletedCategory;
+  return {
+    ...deletedCategory,
+    subcategoryCount: deletedCategory.subcategories.length,
+  };
 };
 
 export const CategoryService = {
