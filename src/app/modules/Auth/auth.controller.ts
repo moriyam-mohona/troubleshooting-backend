@@ -117,6 +117,17 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteAccount = catchAsync(async (req: Request, res: Response) => {
+  const accessToken = req.headers.authorization?.split(" ")[1] ?? "";
+  await AuthService.deleteAccount(req.user.id as string, accessToken);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Account deleted successfully.",
+    data: null,
+  });
+});
+
 export const AuthController = {
   register,
   login,
@@ -129,4 +140,6 @@ export const AuthController = {
   resetPassword,
   changePassword,
   getMe,
+  deleteAccount,
 };
+

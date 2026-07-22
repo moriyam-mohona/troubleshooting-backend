@@ -161,8 +161,15 @@ const refreshAccessToken = async ({ refreshToken }: IRefreshTokenInput) => {
     select: { id: true, email: true, role: true, isActive: true },
   });
 
-  if (!user || !user.isActive) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User not found or account deactivated.");
+  if (!user) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "User account does not exist or has been deleted."
+    );
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been deactivated.");
   }
 
   const payload: ITokenPayload = { id: user.id, email: user.email, role: user.role };
@@ -197,7 +204,10 @@ const logout = async (accessToken: string, refreshToken?: string) => {
 const verifyEmail = async ({ email, otp }: IVerifyEmailInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
   if (user.isEmailVerified) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Email is already verified.");
@@ -232,7 +242,10 @@ const verifyEmail = async ({ email, otp }: IVerifyEmailInput) => {
 const resendOtp = async ({ email, purpose }: IResendOtpInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
 
   if (purpose === "EMAIL_VERIFICATION" && user.isEmailVerified) {
@@ -253,7 +266,10 @@ const forgotPassword = async ({ email }: IForgotPasswordInput) => {
 const verifyOtp = async ({ email, otp }: IVerifyOtpInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
 
   const otpRecord = await prisma.otpToken.findFirst({
@@ -290,7 +306,10 @@ const resetPassword = async ({ resetToken, newPassword }: IResetPasswordInput) =
 
   const user = await prisma.user.findUnique({ where: { email: decoded.email } });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
 
   const hashedPassword = await hashItem(newPassword);
@@ -308,7 +327,10 @@ const resetPassword = async ({ resetToken, newPassword }: IResetPasswordInput) =
 const changePassword = async (userId: string, data: IChangePasswordInput) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
 
   const isOldPasswordValid = await compareItem(data.oldPassword, user.password);
@@ -342,9 +364,41 @@ const getMe = async (id: string) => {
   });
 
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found.");
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
   }
   return user;
+};
+
+const deleteAccount = async (userId: string, accessToken?: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User account does not exist or has been deleted."
+    );
+  }
+
+  // Blacklist the current access token if provided
+  if (accessToken) {
+    try {
+      const decoded = jwtHelpers.verifyToken(accessToken, config.jwt.secret);
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = (decoded.exp ?? now + 900) - now;
+      if (ttl > 0) {
+        await blacklistToken(accessToken, ttl);
+      }
+    } catch {
+      // Token expired already — ignore
+    }
+  }
+
+  // Delete user from DB (Prisma relation onDelete: Cascade will remove associated OtpToken and RefreshToken entries)
+  await prisma.user.delete({
+    where: { id: userId },
+  });
 };
 
 export const AuthService = {
@@ -359,4 +413,6 @@ export const AuthService = {
   resetPassword,
   changePassword,
   getMe,
+  deleteAccount,
 };
+

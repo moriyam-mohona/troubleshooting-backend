@@ -14,10 +14,7 @@ async function main() {
     logger.info("🛢️  Database connected successfully");
 
     // 2. Connect to Redis
-    if (process.env.REDIS_ENABLED === "true") {
-      await redis.connect();
-    }
-    // await redis.connect();
+    await redis.connect();
 
     // 3. Start HTTP server
     server = app.listen(config.port, config.host, () => {

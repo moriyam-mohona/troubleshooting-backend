@@ -54,7 +54,10 @@ const auth = (...roles: string[]) => {
       });
 
       if (!user) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, "User no longer exists.");
+        throw new ApiError(
+          httpStatus.UNAUTHORIZED,
+          "User account does not exist or has been deleted."
+        );
       }
 
       if (!user.isActive) {

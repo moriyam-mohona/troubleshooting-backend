@@ -59,6 +59,8 @@ router.post(
 router.post("/logout", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.logout);
 
 router.get("/me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.getMe);
+router.delete("/me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.deleteAccount);
+router.delete("/delete-me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.deleteAccount);
 
 router.post(
   "/change-password",
@@ -68,3 +70,4 @@ router.post(
 );
 
 export const AuthRoutes = router;
+
