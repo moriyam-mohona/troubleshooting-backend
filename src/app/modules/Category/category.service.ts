@@ -15,21 +15,17 @@ const createCategory = async (payload: ICreateCategoryInput) => {
     data: {
       title,
       subtitle,
-      ...(subcategories && subcategories.length > 0 && {
-        subcategories: {
-          create: subcategories.map((sub) => ({
-            title: sub.title,
-          })),
-        },
-      }),
+      ...(subcategories &&
+        subcategories.length > 0 && {
+          subcategories: {
+            create: subcategories.map((sub) => ({
+              title: sub.title,
+            })),
+          },
+        }),
     },
     include: {
       subcategories: true,
-      _count: {
-        select: {
-          subcategories: true,
-        },
-      },
     },
   });
 
@@ -59,11 +55,6 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
   const categories = await prisma.category.findMany({
     where: whereConditions,
     include: {
-      subcategories: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
       _count: {
         select: {
           subcategories: true,
@@ -75,9 +66,9 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
     },
   });
 
-  const formattedCategories = categories.map((category) => ({
+  const formattedCategories = categories.map(({ _count, ...category }) => ({
     ...category,
-    subcategoryCount: category.subcategories.length,
+    subcategoryCount: _count.subcategories,
   }));
 
   return formattedCategories;
@@ -92,11 +83,6 @@ const getSingleCategory = async (id: string) => {
           createdAt: "asc",
         },
       },
-      _count: {
-        select: {
-          subcategories: true,
-        },
-      },
     },
   });
 
@@ -105,8 +91,8 @@ const getSingleCategory = async (id: string) => {
   }
 
   return {
-    ...category,
     subcategoryCount: category.subcategories.length,
+    ...category,
   };
 };
 
@@ -138,18 +124,53 @@ const updateCategory = async (id: string, payload: IUpdateCategoryInput) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  const updatedCategory = await prisma.category.update({
+  const { subcategories, ...categoryData } = payload;
+
+  await prisma.$transaction(async (tx) => {
+    if (Object.keys(categoryData).length > 0) {
+      await tx.category.update({
+        where: { id },
+        data: categoryData,
+      });
+    }
+
+    if (subcategories && subcategories.length > 0) {
+      for (const subcategory of subcategories) {
+        const existingSubcategory = await tx.subCategory.findFirst({
+          where: {
+            id: subcategory.id,
+            categoryId: id,
+          },
+        });
+
+        if (!existingSubcategory) {
+          throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+        }
+
+        await tx.subCategory.update({
+          where: { id: subcategory.id },
+          data: {
+            title: subcategory.title,
+          },
+        });
+      }
+    }
+  });
+
+  const updatedCategory = await prisma.category.findUnique({
     where: { id },
-    data: payload,
     include: {
-      subcategories: true,
-      _count: {
-        select: {
-          subcategories: true,
+      subcategories: {
+        orderBy: {
+          createdAt: "asc",
         },
       },
     },
   });
+
+  if (!updatedCategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
+  }
 
   return {
     ...updatedCategory,

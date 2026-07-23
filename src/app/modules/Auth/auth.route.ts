@@ -56,18 +56,17 @@ router.post(
 );
 
 // Protected routes
-router.post("/logout", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.logout);
+router.post("/logout", auth("USER", "SUPER_ADMIN"), AuthController.logout);
 
-router.get("/me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.getMe);
-router.delete("/me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.deleteAccount);
-router.delete("/delete-me", auth("USER", "ADMIN", "SUPER_ADMIN"), AuthController.deleteAccount);
+router.get("/me", auth("USER", "SUPER_ADMIN"), AuthController.getMe);
+router.delete("/me", auth("USER", "SUPER_ADMIN"), AuthController.deleteAccount);
+router.delete("/delete-me", auth("USER", "SUPER_ADMIN"), AuthController.deleteAccount);
 
 router.post(
   "/change-password",
-  auth("USER", "ADMIN", "SUPER_ADMIN"),
+  auth("USER", "SUPER_ADMIN"),
   RequestValidation.validateRequest(AuthValidation.changePasswordZodSchema),
   AuthController.changePassword
 );
 
 export const AuthRoutes = router;
-

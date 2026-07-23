@@ -7,6 +7,10 @@ export interface ICreateCategoryInput {
 export interface IUpdateCategoryInput {
   title?: string;
   subtitle?: string;
+  subcategories?: Array<{
+    id: string;
+    title: string;
+  }>;
 }
 
 export interface ICategoryFilterRequest {
