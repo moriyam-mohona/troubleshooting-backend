@@ -26,7 +26,8 @@ app.set("trust proxy", 1);
 
 // CORS
 const corsOptions = {
-  origin: config.env === "production" ? config.cors.origin.split(",") : "*",
+  // origin: config.env === "production" ? config.cors.origin.split(",") : "*",
+  origin: config.cors.origin.split(","),
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "x-client-type", "Accept", "Origin"],
   credentials: true,
