@@ -1,6 +1,7 @@
 import express from "express";
 import { AuthRoutes } from "../modules/Auth/auth.route";
 import { CategoryRoutes } from "../modules/Category/category.route";
+import { DecisionTreeRoutes } from "../modules/DecisionTree/decisionTree.route";
 import { SubcategoryRoutes } from "../modules/Subcategory/subcategory.route";
 import { SupportRoutes } from "../modules/Support/support.route";
 import { UserRoutes } from "../modules/User/user.route";
@@ -24,6 +25,10 @@ const moduleRoutes = [
   {
     path: "/subcategories",
     route: SubcategoryRoutes,
+  },
+  {
+    path: "/decision-tree",
+    route: DecisionTreeRoutes,
   },
   {
     path: "/user-questions",

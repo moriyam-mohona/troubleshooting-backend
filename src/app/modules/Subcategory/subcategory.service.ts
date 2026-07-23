@@ -14,7 +14,7 @@ const createSubcategory = async (payload: ICreateSubcategoryInput) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Target category not found.");
   }
 
-  const subcategory = await prisma.subcategory.create({
+  const subcategory = await prisma.subCategory.create({
     data: {
       title,
       categoryId,
@@ -42,7 +42,7 @@ const getSubcategoriesByCategoryId = async (categoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  const subcategories = await prisma.subcategory.findMany({
+  const subcategories = await prisma.subCategory.findMany({
     where: { categoryId },
     orderBy: {
       createdAt: "asc",
@@ -53,7 +53,7 @@ const getSubcategoriesByCategoryId = async (categoryId: string) => {
 };
 
 const updateSubcategory = async (id: string, payload: IUpdateSubcategoryInput) => {
-  const existingSubcategory = await prisma.subcategory.findUnique({
+  const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id },
   });
 
@@ -61,7 +61,7 @@ const updateSubcategory = async (id: string, payload: IUpdateSubcategoryInput) =
     throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
   }
 
-  const updatedSubcategory = await prisma.subcategory.update({
+  const updatedSubcategory = await prisma.subCategory.update({
     where: { id },
     data: {
       title: payload.title,
@@ -72,7 +72,7 @@ const updateSubcategory = async (id: string, payload: IUpdateSubcategoryInput) =
 };
 
 const deleteSubcategory = async (id: string) => {
-  const existingSubcategory = await prisma.subcategory.findUnique({
+  const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id },
   });
 
@@ -80,7 +80,7 @@ const deleteSubcategory = async (id: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
   }
 
-  const deletedSubcategory = await prisma.subcategory.delete({
+  const deletedSubcategory = await prisma.subCategory.delete({
     where: { id },
   });
 

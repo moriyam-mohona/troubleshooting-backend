@@ -18,7 +18,7 @@ const createUserQuestion = async (
 ) => {
   const { subcategoryId, description } = payload;
 
-  const existingSubcategory = await prisma.subcategory.findUnique({
+  const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id: subcategoryId },
   });
 

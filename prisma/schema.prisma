@@ -75,24 +75,84 @@ model Category {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   subtitle      String
-  subcategories Subcategory[]
+  subcategories SubCategory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Subcategory {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  title      String
-  categoryId String   @db.ObjectId
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  userQuestions UserQuestion[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SubCategory {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  categoryId      String         @db.ObjectId
+  category        Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Starting root question of this decision tree
+  firstQuestionId String?        @db.ObjectId
+  firstQuestion   Question?      @relation("FirstQuestion", fields: [firstQuestionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  questions       Question[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  userQuestions   UserQuestion[]
 
   @@index([categoryId])
+}
+
+enum RouteOption {
+  YES
+  NO
+}
+
+enum RouteType {
+  QUESTION
+  ANSWER
+}
+
+model Question {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  question       String
+  subCategoryId  String          @db.ObjectId
+  subCategory    SubCategory     @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  // Outgoing routes from this question (Yes / No)
+  routes         QuestionRoute[] @relation("FromQuestion")
+  // Incoming routes pointing to this question as follow-up
+  incomingRoutes QuestionRoute[] @relation("ToQuestion")
+  firstFor       SubCategory[]   @relation("FirstQuestion")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([subCategoryId])
+}
+
+model Answer {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  whatsHappening String
+  recommendedFix String
+  incomingRoutes QuestionRoute[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model QuestionRoute {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  // The parent question this route starts from
+  questionId     String      @db.ObjectId
+  question       Question    @relation("FromQuestion", fields: [questionId], references: [id], onDelete: Cascade)
+  // YES or NO option
+  option         RouteOption
+  // QUESTION or ANSWER
+  nextType       RouteType
+  // If nextType == QUESTION -> links to next Question
+  nextQuestionId String?     @db.ObjectId
+  nextQuestion   Question?   @relation("ToQuestion", fields: [nextQuestionId], references: [id], onDelete: Cascade)
+  // If nextType == ANSWER -> links to Answer
+  nextAnswerId   String?     @db.ObjectId
+  nextAnswer     Answer?     @relation(fields: [nextAnswerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([questionId])
+  @@index([nextQuestionId])
+  @@index([nextAnswerId])
 }
 
 enum UserQuestionStatus {
@@ -101,20 +161,20 @@ enum UserQuestionStatus {
 }
 
 model UserQuestion {
-  id            String             @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String             @db.ObjectId
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subcategoryId String             @db.ObjectId
-  subcategory   Subcategory        @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String      @db.ObjectId
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategoryId String      @db.ObjectId
+  subcategory   SubCategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
 
-  description   String
-  image         String?
-  status        UserQuestionStatus @default(PENDING)
-  adminReply    String?
-  repliedAt     DateTime?
+  description String
+  image       String?
+  status      UserQuestionStatus @default(PENDING)
+  adminReply  String?
+  repliedAt   DateTime?
 
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([subcategoryId])
@@ -127,72 +187,18 @@ enum SupportStatus {
 }
 
 model Support {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String?       @db.ObjectId
-  name      String
-  email     String
-  phone     String?
-  subject   String?
-  message   String
-  status    SupportStatus @default(PENDING)
+  id      String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String?       @db.ObjectId
+  name    String
+  email   String
+  phone   String?
+  subject String?
+  message String
+  status  SupportStatus @default(PENDING)
 
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
 }
-
-
-// model QuestionNode {
-//   id            String      @id @default(cuid())
-//   subcategoryId String
-//   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-
-//   questionText   String       @db.Text
-//   selectedOption OptionChoice @default(YES)
-
-//   // Nullable reference: If this question is a nested sub-question under a parent branch
-//   parentBranchId String?
-//   parentBranch   TreeBranch? @relation("BranchSubQuestions", fields: [parentBranchId], references: [id], onDelete: Cascade)
-
-//   // Relation: Both YES and NO branches configured for this question
-//   branches TreeBranch[] @relation("QuestionBranches")
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([subcategoryId])
-//   @@index([parentBranchId])
-// }
-
-// model TreeBranch {
-//   id         String       @id @default(cuid())
-//   questionId String
-//   question   QuestionNode @relation("QuestionBranches", fields: [questionId], references: [id], onDelete: Cascade)
-
-//   label OptionChoice // YES or NO
-
-//   // Follow-up sub-questions linked under this specific option path
-//   childQuestions QuestionNode[] @relation("BranchSubQuestions")
-
-//   // Optional Diagnosis / Answer outcome attached to this option path
-//   diagnosis Diagnosis?
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([questionId])
-// }
-
-// // 5. DIAGNOSIS (Outcome / Solution)
-
-// model Diagnosis {
-//   id             String     @id @default(cuid())
-//   branchId       String     @unique
-//   branch         TreeBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
-//   whatsHappening String     @db.Text
-//   recommendedFix String     @db.Text
-//   createdAt      DateTime   @default(now())
-//   updatedAt      DateTime   @updatedAt
-// }

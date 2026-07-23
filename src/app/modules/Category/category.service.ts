@@ -119,7 +119,7 @@ const getSubcategoriesByCategoryId = async (categoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  const subcategories = await prisma.subcategory.findMany({
+  const subcategories = await prisma.subCategory.findMany({
     where: { categoryId },
     orderBy: {
       createdAt: "asc",
