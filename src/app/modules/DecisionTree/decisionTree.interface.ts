@@ -8,7 +8,7 @@ export interface IDiagnosisPayload {
 export interface ITreeNodePayload {
   id?: string;
   questionText: string;
-  selectedOption: "Yes" | "No";
+  selectedOption?: "Yes" | "No";
   yesBranch: {
     hasDiagnosis: boolean;
     diagnosis?: IDiagnosisPayload | null;

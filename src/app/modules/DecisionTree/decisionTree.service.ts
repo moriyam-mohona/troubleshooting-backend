@@ -141,7 +141,6 @@ const buildRecursiveTree = async (questionId: string): Promise<ITreeNodePayload 
   return {
     id: question.id,
     questionText: question.question,
-    selectedOption: "Yes",
     yesBranch: yesBranchData,
     noBranch: noBranchData,
   };
@@ -150,10 +149,34 @@ const buildRecursiveTree = async (questionId: string): Promise<ITreeNodePayload 
 const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePayload[]) => {
   const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id: subcategoryId },
+    include: {
+      category: {
+        select: {
+          title: true,
+        },
+      },
+    },
   });
 
   if (!existingSubcategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+  }
+
+  if (!treeNodes || treeNodes.length === 0) {
+    return {
+      subcategoryId: existingSubcategory.id,
+      subcategoryTitle: existingSubcategory.title,
+      categoryTitle: existingSubcategory.category.title,
+      message: "Decision tree cleared successfully",
+      treeNodes: [] as ITreeNodePayload[],
+    };
+  }
+
+  if (treeNodes.length > 1) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Only one root question tree is allowed per subcategory."
+    );
   }
 
   return await prisma.$transaction(async (tx) => {
@@ -192,10 +215,6 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
       }
     }
 
-    if (!treeNodes || treeNodes.length === 0) {
-      return { message: "Decision tree cleared successfully", treeNodes: [] };
-    }
-
     // Save root question node
     const rootNodePayload = treeNodes[0];
     const rootQuestionId = await saveNodeRecursive(tx, subcategoryId, rootNodePayload);
@@ -210,6 +229,8 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
 
     return {
       subcategoryId,
+      subcategoryTitle: existingSubcategory.title,
+      categoryTitle: existingSubcategory.category.title,
       rootQuestionId,
       treeNodes: updatedTree ? [updatedTree] : [],
     };

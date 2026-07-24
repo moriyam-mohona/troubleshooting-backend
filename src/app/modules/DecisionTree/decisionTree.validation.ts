@@ -9,7 +9,7 @@ const treeNodeSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     id: z.string().optional(),
     questionText: z.string().min(1, "Question text cannot be empty"),
-    selectedOption: z.enum(["Yes", "No"]),
+    selectedOption: z.enum(["Yes", "No"]).optional(),
     yesBranch: z.object({
       hasDiagnosis: z.boolean(),
       diagnosis: diagnosisSchema.nullable().optional(),
@@ -26,7 +26,10 @@ const treeNodeSchema: z.ZodType<any> = z.lazy(() =>
 export const DecisionTreeValidation = {
   saveTreeSchema: z.object({
     body: z.object({
-      treeNodes: z.array(treeNodeSchema),
+      treeNodes: z
+        .array(treeNodeSchema)
+        .min(1, "At least one root question is required")
+        .max(1, "Only one root question tree is allowed per subcategory"),
     }),
   }),
   traverseSchema: z.object({
