@@ -26,10 +26,15 @@ const treeNodeSchema: z.ZodType<any> = z.lazy(() =>
 export const DecisionTreeValidation = {
   saveTreeSchema: z.object({
     body: z.object({
+      isDraft: z.boolean().optional(),
       treeNodes: z
         .array(treeNodeSchema)
-        .min(1, "At least one root question is required")
         .max(1, "Only one root question tree is allowed per subcategory"),
+    }),
+  }),
+  toggleStatusSchema: z.object({
+    body: z.object({
+      isDraft: z.boolean(),
     }),
   }),
   traverseSchema: z.object({

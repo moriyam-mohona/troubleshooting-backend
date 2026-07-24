@@ -23,6 +23,7 @@ export interface ITreeNodePayload {
 
 export interface ISaveDecisionTreeInput {
   subcategoryId: string;
+  isDraft?: boolean;
   treeNodes: ITreeNodePayload[];
 }
 

@@ -146,7 +146,11 @@ const buildRecursiveTree = async (questionId: string): Promise<ITreeNodePayload 
   };
 };
 
-const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePayload[]) => {
+const saveDecisionTree = async (
+  subcategoryId: string,
+  treeNodes: ITreeNodePayload[],
+  isDraft?: boolean
+) => {
   const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id: subcategoryId },
     include: {
@@ -163,10 +167,20 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
   }
 
   if (!treeNodes || treeNodes.length === 0) {
+    const finalIsDraft = isDraft !== undefined ? isDraft : (existingSubcategory as any).isDraft ?? false;
+    await prisma.subCategory.update({
+      where: { id: subcategoryId },
+      data: {
+        firstQuestionId: null,
+        isDraft: finalIsDraft,
+      },
+    });
+
     return {
       subcategoryId: existingSubcategory.id,
       subcategoryTitle: existingSubcategory.title,
       categoryTitle: existingSubcategory.category.title,
+      isDraft: finalIsDraft,
       message: "Decision tree cleared successfully",
       treeNodes: [] as ITreeNodePayload[],
     };
@@ -178,6 +192,8 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
       "Only one root question tree is allowed per subcategory."
     );
   }
+
+  const finalIsDraft = isDraft !== undefined ? isDraft : (existingSubcategory as any).isDraft ?? false;
 
   return await prisma.$transaction(async (tx) => {
     // Clean up existing questions for this subcategory
@@ -219,10 +235,13 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
     const rootNodePayload = treeNodes[0];
     const rootQuestionId = await saveNodeRecursive(tx, subcategoryId, rootNodePayload);
 
-    // Link subcategory to root question
+    // Link subcategory to root question and set draft status
     await tx.subCategory.update({
       where: { id: subcategoryId },
-      data: { firstQuestionId: rootQuestionId },
+      data: {
+        firstQuestionId: rootQuestionId,
+        isDraft: finalIsDraft,
+      },
     });
 
     const updatedTree = await buildRecursiveTree(rootQuestionId);
@@ -231,13 +250,44 @@ const saveDecisionTree = async (subcategoryId: string, treeNodes: ITreeNodePaylo
       subcategoryId,
       subcategoryTitle: existingSubcategory.title,
       categoryTitle: existingSubcategory.category.title,
+      isDraft: finalIsDraft,
       rootQuestionId,
       treeNodes: updatedTree ? [updatedTree] : [],
     };
   });
 };
 
-const getDecisionTree = async (subcategoryId: string) => {
+const toggleDraftStatus = async (subcategoryId: string, isDraft: boolean) => {
+  const existingSubcategory = await prisma.subCategory.findUnique({
+    where: { id: subcategoryId },
+    include: {
+      category: {
+        select: { title: true },
+      },
+    },
+  });
+
+  if (!existingSubcategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+  }
+
+  const updatedSubcategory = await prisma.subCategory.update({
+    where: { id: subcategoryId },
+    data: { isDraft },
+  });
+
+  return {
+    subcategoryId: updatedSubcategory.id,
+    subcategoryTitle: updatedSubcategory.title,
+    categoryTitle: existingSubcategory.category.title,
+    isDraft: (updatedSubcategory as any).isDraft ?? isDraft,
+    message: isDraft
+      ? "Decision tree saved as draft."
+      : "Decision tree published successfully.",
+  };
+};
+
+const getDecisionTree = async (subcategoryId: string, userRole?: string) => {
   const subcategory = await prisma.subCategory.findUnique({
     where: { id: subcategoryId },
     include: {
@@ -254,11 +304,27 @@ const getDecisionTree = async (subcategoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
   }
 
+  const isDraft = (subcategory as any).isDraft ?? false;
+  const isAdmin = userRole === "SUPER_ADMIN";
+
+  // If the decision tree is in draft mode, hide tree nodes for standard users
+  if (isDraft && !isAdmin) {
+    return {
+      subcategoryId: subcategory.id,
+      subcategoryTitle: subcategory.title,
+      categoryTitle: subcategory.category.title,
+      isDraft: true,
+      treeNodes: [],
+      message: "Decision tree for this subcategory is currently in draft mode.",
+    };
+  }
+
   if (!subcategory.firstQuestionId) {
     return {
       subcategoryId: subcategory.id,
       subcategoryTitle: subcategory.title,
       categoryTitle: subcategory.category.title,
+      isDraft,
       treeNodes: [],
     };
   }
@@ -269,6 +335,7 @@ const getDecisionTree = async (subcategoryId: string) => {
     subcategoryId: subcategory.id,
     subcategoryTitle: subcategory.title,
     categoryTitle: subcategory.category.title,
+    isDraft,
     treeNodes: rootTree ? [rootTree] : [],
   };
 };
@@ -276,8 +343,25 @@ const getDecisionTree = async (subcategoryId: string) => {
 const traverseDecisionTree = async (
   subcategoryId: string,
   questionId: string,
-  option: RouteOption
+  option: RouteOption,
+  userRole?: string
 ) => {
+  const subcategory = await prisma.subCategory.findUnique({
+    where: { id: subcategoryId },
+    select: { isDraft: true },
+  });
+
+  if (!subcategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+  }
+
+  if ((subcategory as any).isDraft && userRole !== "SUPER_ADMIN") {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "This decision tree is currently in draft mode and cannot be traversed."
+    );
+  }
+
   const route = await prisma.questionRoute.findFirst({
     where: {
       questionId,
@@ -319,8 +403,69 @@ const traverseDecisionTree = async (
   throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Invalid route configuration.");
 };
 
+const deleteDecisionTree = async (subcategoryId: string) => {
+  const existingSubcategory = await prisma.subCategory.findUnique({
+    where: { id: subcategoryId },
+    include: {
+      category: {
+        select: {
+          title: true,
+        },
+      },
+    },
+  });
+
+  if (!existingSubcategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const existingQuestions = await tx.question.findMany({
+      where: { subCategoryId: subcategoryId },
+      select: { id: true },
+    });
+
+    const existingQuestionIds = existingQuestions.map((q) => q.id);
+
+    if (existingQuestionIds.length > 0) {
+      const routes = await tx.questionRoute.findMany({
+        where: { questionId: { in: existingQuestionIds } },
+        select: { nextAnswerId: true },
+      });
+
+      const answerIdsToDelete = routes
+        .map((r) => r.nextAnswerId)
+        .filter((id): id is string => id !== null);
+
+      await tx.subCategory.update({
+        where: { id: subcategoryId },
+        data: { firstQuestionId: null },
+      });
+
+      await tx.question.deleteMany({
+        where: { subCategoryId: subcategoryId },
+      });
+
+      if (answerIdsToDelete.length > 0) {
+        await tx.answer.deleteMany({
+          where: { id: { in: answerIdsToDelete } },
+        });
+      }
+    }
+
+    return {
+      subcategoryId: existingSubcategory.id,
+      subcategoryTitle: existingSubcategory.title,
+      categoryTitle: existingSubcategory.category.title,
+    };
+  });
+};
+
 export const DecisionTreeService = {
   saveDecisionTree,
+  updateDecisionTree: saveDecisionTree,
+  toggleDraftStatus,
   getDecisionTree,
   traverseDecisionTree,
+  deleteDecisionTree,
 };
