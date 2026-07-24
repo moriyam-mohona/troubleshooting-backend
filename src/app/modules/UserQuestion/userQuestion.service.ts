@@ -251,6 +251,8 @@ const replyUserQuestion = async (id: string, payload: IReplyUserQuestionInput) =
     throw new ApiError(httpStatus.NOT_FOUND, "User question not found.");
   }
 
+  const hydratedExistingQuestion = await hydrateUserQuestion(existingQuestion);
+
   const updatedQuestion = await prisma.userQuestion.update({
     where: { id },
     data: {
@@ -264,20 +266,20 @@ const replyUserQuestion = async (id: string, payload: IReplyUserQuestionInput) =
   const hydratedUpdatedQuestion = await hydrateUserQuestion(updatedQuestion);
 
   // Send answer email notification to the logged-in user who asked the question
-  if (existingQuestion.user && existingQuestion.user.email) {
-    const questionSubcategory = existingQuestion.subcategory?.title || "your question";
+  if (hydratedExistingQuestion?.user && hydratedExistingQuestion.user.email) {
+    const questionSubcategory = hydratedExistingQuestion.subcategory?.title || "your question";
 
     const emailHtml = questionAnswerEmail(
-      existingQuestion.user.name || "User",
+      hydratedExistingQuestion.user.name || "User",
       questionSubcategory,
-      existingQuestion.description,
+      hydratedExistingQuestion.description,
       payload.adminReply
     );
 
     try {
       await emailSender(
         `Response to Your Inquiry: ${questionSubcategory}`,
-        existingQuestion.user.email,
+        hydratedExistingQuestion.user.email,
         emailHtml
       );
     } catch {
