@@ -256,7 +256,7 @@ const saveDecisionTree = async (
       treeNodes: updatedTree ? [updatedTree] : [],
     };
   }, {
-    maxWait: 15000,
+    // maxWait: 15000,
     timeout: 60000,
   });
 };
