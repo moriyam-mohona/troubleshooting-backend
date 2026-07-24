@@ -11,6 +11,100 @@ import {
   IUserQuestionFilterRequest,
 } from "./userQuestion.interface";
 
+type UserQuestionBase = {
+  id: string;
+  userId: string;
+  subcategoryId: string;
+  description: string;
+  image: string | null;
+  status: UserQuestionStatus;
+  adminReply: string | null;
+  repliedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const userQuestionBaseSelect = {
+  id: true,
+  userId: true,
+  subcategoryId: true,
+  description: true,
+  image: true,
+  status: true,
+  adminReply: true,
+  repliedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserQuestionSelect;
+
+const hydrateUserQuestions = async (questions: UserQuestionBase[]) => {
+  if (questions.length === 0) {
+    return [];
+  }
+
+  const userIds = [...new Set(questions.map((question) => question.userId))];
+  const subcategoryIds = [...new Set(questions.map((question) => question.subcategoryId))];
+
+  const [users, subcategories] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    }),
+    prisma.subCategory.findMany({
+      where: { id: { in: subcategoryIds } },
+      include: { category: true },
+    }),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user.id, user]));
+  const subcategoryMap = new Map(subcategories.map((subcategory) => [subcategory.id, subcategory]));
+
+  return questions.map((question) => ({
+    ...question,
+    user: userMap.get(question.userId) ?? null,
+    subcategory: subcategoryMap.get(question.subcategoryId) ?? null,
+  }));
+};
+
+const hydrateUserQuestion = async (question: UserQuestionBase | null) => {
+  if (!question) {
+    return null;
+  }
+
+  const [hydratedQuestion] = await hydrateUserQuestions([question]);
+
+  return hydratedQuestion;
+};
+
+const formatAdminUserQuestion = (question: Awaited<ReturnType<typeof hydrateUserQuestion>>) => {
+  if (!question) {
+    return question;
+  }
+
+  return {
+    id: question.id,
+    description: question.description,
+    image: question.image,
+    status: question.status,
+    adminReply: question.adminReply,
+    repliedAt: question.repliedAt,
+    createdAt: question.createdAt,
+    updatedAt: question.updatedAt,
+    user: question.user
+      ? {
+          id: question.user.id,
+          name: question.user.name,
+          email: question.user.email,
+        }
+      : null,
+    subcategory: question.subcategory
+      ? {
+          title: question.subcategory.title,
+        }
+      : null,
+  };
+};
+
 const createUserQuestion = async (
   userId: string,
   payload: ICreateUserQuestionInput,
@@ -34,17 +128,10 @@ const createUserQuestion = async (
       image: imagePath || payload.image,
       status: UserQuestionStatus.PENDING,
     },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-      subcategory: {
-        include: { category: true },
-      },
-    },
+    select: userQuestionBaseSelect,
   });
 
-  return question;
+  return hydrateUserQuestion(question);
 };
 
 const getAllUserQuestions = async (
@@ -84,14 +171,7 @@ const getAllUserQuestions = async (
   const [questions, total] = await Promise.all([
     prisma.userQuestion.findMany({
       where: whereConditions,
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-        subcategory: {
-          include: { category: true },
-        },
-      },
+      select: userQuestionBaseSelect,
       skip,
       take: limit,
       orderBy: {
@@ -103,13 +183,16 @@ const getAllUserQuestions = async (
     }),
   ]);
 
+  const hydratedQuestions = await hydrateUserQuestions(questions);
+  const formattedQuestions = hydratedQuestions.map((question) => formatAdminUserQuestion(question));
+
   return {
     meta: {
       page,
       limit,
       total,
     },
-    data: questions,
+    data: formattedQuestions,
   };
 };
 
@@ -121,11 +204,7 @@ const getMyQuestions = async (userId: string, options: IPaginationOptions) => {
   const [questions, total] = await Promise.all([
     prisma.userQuestion.findMany({
       where: { userId },
-      include: {
-        subcategory: {
-          include: { category: true },
-        },
-      },
+      select: userQuestionBaseSelect,
       skip,
       take: limit,
       orderBy: {
@@ -137,47 +216,35 @@ const getMyQuestions = async (userId: string, options: IPaginationOptions) => {
     }),
   ]);
 
+  const hydratedQuestions = await hydrateUserQuestions(questions);
+
   return {
     meta: {
       page,
       limit,
       total,
     },
-    data: questions,
+    data: hydratedQuestions,
   };
 };
 
 const getSingleUserQuestion = async (id: string) => {
   const question = await prisma.userQuestion.findUnique({
     where: { id },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-      subcategory: {
-        include: { category: true },
-      },
-    },
+    select: userQuestionBaseSelect,
   });
 
   if (!question) {
     throw new ApiError(httpStatus.NOT_FOUND, "User question not found.");
   }
 
-  return question;
+  return hydrateUserQuestion(question);
 };
 
 const replyUserQuestion = async (id: string, payload: IReplyUserQuestionInput) => {
   const existingQuestion = await prisma.userQuestion.findUnique({
     where: { id },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-      subcategory: {
-        select: { id: true, title: true },
-      },
-    },
+    select: userQuestionBaseSelect,
   });
 
   if (!existingQuestion) {
@@ -191,28 +258,25 @@ const replyUserQuestion = async (id: string, payload: IReplyUserQuestionInput) =
       status: UserQuestionStatus.ANSWERED,
       repliedAt: new Date(),
     },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-      subcategory: {
-        include: { category: true },
-      },
-    },
+    select: userQuestionBaseSelect,
   });
+
+  const hydratedUpdatedQuestion = await hydrateUserQuestion(updatedQuestion);
 
   // Send answer email notification to the logged-in user who asked the question
   if (existingQuestion.user && existingQuestion.user.email) {
+    const questionSubcategory = existingQuestion.subcategory?.title || "your question";
+
     const emailHtml = questionAnswerEmail(
       existingQuestion.user.name || "User",
-      existingQuestion.subcategory.title,
+      questionSubcategory,
       existingQuestion.description,
       payload.adminReply
     );
 
     try {
       await emailSender(
-        `Response to Your Inquiry: ${existingQuestion.subcategory.title}`,
+        `Response to Your Inquiry: ${questionSubcategory}`,
         existingQuestion.user.email,
         emailHtml
       );
@@ -221,7 +285,7 @@ const replyUserQuestion = async (id: string, payload: IReplyUserQuestionInput) =
     }
   }
 
-  return updatedQuestion;
+  return hydratedUpdatedQuestion;
 };
 
 export const UserQuestionService = {

@@ -10,7 +10,7 @@ const router = express.Router();
 // User routes
 router.post(
   "/",
-  auth("USER", "SUPER_ADMIN"),
+  auth("USER"),
   imageUploader.single("image"),
   (req, res, next) => {
     if (typeof req.body.data === "string") {
@@ -22,7 +22,7 @@ router.post(
   UserQuestionController.createUserQuestion
 );
 
-router.get("/my-questions", auth("USER", "SUPER_ADMIN"), UserQuestionController.getMyQuestions);
+router.get("/my-questions", auth("USER"), UserQuestionController.getMyQuestions);
 
 // Admin-only routes
 router.get("/", auth("SUPER_ADMIN"), UserQuestionController.getAllUserQuestions);
