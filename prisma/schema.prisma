@@ -89,7 +89,7 @@ model SubCategory {
   // Starting root question of this decision tree
   firstQuestionId String?        @db.ObjectId
   firstQuestion   Question?      @relation("FirstQuestion", fields: [firstQuestionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  isDraft         Boolean        @default(false)
+  isDraft         Boolean        @default(true)
   questions       Question[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt

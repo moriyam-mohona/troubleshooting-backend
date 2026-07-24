@@ -195,7 +195,8 @@ const saveDecisionTree = async (
 
   const finalIsDraft = isDraft !== undefined ? isDraft : (existingSubcategory as any).isDraft ?? false;
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(
+    async (tx) => {
     // Clean up existing questions for this subcategory
     const existingQuestions = await tx.question.findMany({
       where: { subCategoryId: subcategoryId },
@@ -254,6 +255,9 @@ const saveDecisionTree = async (
       rootQuestionId,
       treeNodes: updatedTree ? [updatedTree] : [],
     };
+  }, {
+    maxWait: 15000,
+    timeout: 60000,
   });
 };
 
@@ -419,46 +423,52 @@ const deleteDecisionTree = async (subcategoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
   }
 
-  return await prisma.$transaction(async (tx) => {
-    const existingQuestions = await tx.question.findMany({
-      where: { subCategoryId: subcategoryId },
-      select: { id: true },
-    });
-
-    const existingQuestionIds = existingQuestions.map((q) => q.id);
-
-    if (existingQuestionIds.length > 0) {
-      const routes = await tx.questionRoute.findMany({
-        where: { questionId: { in: existingQuestionIds } },
-        select: { nextAnswerId: true },
-      });
-
-      const answerIdsToDelete = routes
-        .map((r) => r.nextAnswerId)
-        .filter((id): id is string => id !== null);
-
-      await tx.subCategory.update({
-        where: { id: subcategoryId },
-        data: { firstQuestionId: null },
-      });
-
-      await tx.question.deleteMany({
+  return await prisma.$transaction(
+    async (tx) => {
+      const existingQuestions = await tx.question.findMany({
         where: { subCategoryId: subcategoryId },
+        select: { id: true },
       });
 
-      if (answerIdsToDelete.length > 0) {
-        await tx.answer.deleteMany({
-          where: { id: { in: answerIdsToDelete } },
-        });
-      }
-    }
+      const existingQuestionIds = existingQuestions.map((q) => q.id);
 
-    return {
-      subcategoryId: existingSubcategory.id,
-      subcategoryTitle: existingSubcategory.title,
-      categoryTitle: existingSubcategory.category.title,
-    };
-  });
+      if (existingQuestionIds.length > 0) {
+        const routes = await tx.questionRoute.findMany({
+          where: { questionId: { in: existingQuestionIds } },
+          select: { nextAnswerId: true },
+        });
+
+        const answerIdsToDelete = routes
+          .map((r) => r.nextAnswerId)
+          .filter((id): id is string => id !== null);
+
+        await tx.subCategory.update({
+          where: { id: subcategoryId },
+          data: { firstQuestionId: null },
+        });
+
+        await tx.question.deleteMany({
+          where: { subCategoryId: subcategoryId },
+        });
+
+        if (answerIdsToDelete.length > 0) {
+          await tx.answer.deleteMany({
+            where: { id: { in: answerIdsToDelete } },
+          });
+        }
+      }
+
+      return {
+        subcategoryId: existingSubcategory.id,
+        subcategoryTitle: existingSubcategory.title,
+        categoryTitle: existingSubcategory.category.title,
+      };
+    },
+    {
+      maxWait: 15000,
+      timeout: 60000,
+    }
+  );
 };
 
 export const DecisionTreeService = {
