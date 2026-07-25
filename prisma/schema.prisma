@@ -32,6 +32,7 @@ model User {
   email           String     @unique
   password        String
   name            String?
+  profilePicture  String?
   role            Role       @default(USER)
   status          UserStatus @default(ACTIVE)
   isEmailVerified Boolean    @default(false)
@@ -214,26 +215,26 @@ enum SessionStatus {
 }
 
 model UserTreeSession {
-  id                String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String        @db.ObjectId
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subcategoryId     String        @db.ObjectId
-  subcategory       SubCategory   @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String      @db.ObjectId
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategoryId String      @db.ObjectId
+  subcategory   SubCategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
 
-  currentQuestionId String?       @db.ObjectId
-  currentQuestion   Question?     @relation(fields: [currentQuestionId], references: [id], onDelete: SetNull)
+  currentQuestionId String?   @db.ObjectId
+  currentQuestion   Question? @relation(fields: [currentQuestionId], references: [id], onDelete: SetNull)
 
-  currentStep       Int           @default(1)
-  status            SessionStatus @default(IN_PROGRESS)
+  currentStep Int           @default(1)
+  status      SessionStatus @default(IN_PROGRESS)
 
   // Dynamic history of choices taken: [{ step, questionId, questionText, optionChosen }]
-  historyPath       Json?
+  historyPath Json?
 
-  finalAnswerId     String?       @db.ObjectId
-  finalAnswer       Answer?       @relation(fields: [finalAnswerId], references: [id], onDelete: SetNull)
+  finalAnswerId String? @db.ObjectId
+  finalAnswer   Answer? @relation(fields: [finalAnswerId], references: [id], onDelete: SetNull)
 
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([subcategoryId])

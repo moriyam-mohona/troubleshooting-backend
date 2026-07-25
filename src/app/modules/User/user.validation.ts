@@ -7,6 +7,7 @@ const updateProfileZodSchema = z.object({
       .min(1, "Name cannot be empty.")
       .max(100, "Name cannot exceed 100 characters.")
       .optional(),
+    profilePicture: z.string().optional(),
   }),
 });
 

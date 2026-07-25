@@ -34,7 +34,7 @@ const getSingleUser = catchAsync(async (req: Request, res: Response) => {
 
 const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
-  const result = await UserService.updateMyProfile(userId, req.body);
+  const result = await UserService.updateMyProfile(userId, req.body, req.file);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

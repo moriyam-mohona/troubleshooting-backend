@@ -389,6 +389,7 @@ const getMe = async (id: string) => {
       id: true,
       name: true,
       email: true,
+      profilePicture: true,
       role: true,
       isEmailVerified: true,
       isActive: true,

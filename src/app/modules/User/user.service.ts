@@ -10,6 +10,7 @@ const userSelectFields = {
   id: true,
   email: true,
   name: true,
+  profilePicture: true,
   role: true,
   status: true,
   isEmailVerified: true,
@@ -102,7 +103,11 @@ const getSingleUser = async (id: string) => {
   return user;
 };
 
-const updateMyProfile = async (userId: string, payload: IUpdateProfileInput) => {
+const updateMyProfile = async (
+  userId: string,
+  payload: IUpdateProfileInput,
+  file?: Express.Multer.File
+) => {
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -111,10 +116,16 @@ const updateMyProfile = async (userId: string, payload: IUpdateProfileInput) => 
     throw new ApiError(httpStatus.NOT_FOUND, "User profile not found.");
   }
 
+  let profilePicturePath = payload.profilePicture;
+  if (file) {
+    profilePicturePath = `/uploads/images/${file.filename}`;
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
       ...(payload.name !== undefined && { name: payload.name }),
+      ...(profilePicturePath !== undefined && { profilePicture: profilePicturePath }),
     },
     select: userSelectFields,
   });

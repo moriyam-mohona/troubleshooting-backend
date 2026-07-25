@@ -13,4 +13,5 @@ export interface IPaginationOptions {
 
 export interface IUpdateProfileInput {
   name?: string;
+  profilePicture?: string;
 }

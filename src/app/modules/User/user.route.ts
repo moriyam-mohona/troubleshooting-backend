@@ -1,4 +1,5 @@
 import express from "express";
+import { imageUploader } from "../../../helpers/file_uploader/imageUploader";
 import auth from "../../middlewares/auth";
 import { RequestValidation } from "../../middlewares/validateRequest";
 import { UserController } from "./user.controller";
@@ -10,6 +11,17 @@ const router = express.Router();
 router.patch(
   "/me",
   auth("USER", "SUPER_ADMIN"),
+  imageUploader.single("profilePicture"),
+  (req, res, next) => {
+    if (typeof req.body.data === "string") {
+      try {
+        req.body = JSON.parse(req.body.data);
+      } catch (e) {
+        // Ignore parse error
+      }
+    }
+    next();
+  },
   RequestValidation.validateRequest(UserValidation.updateProfileZodSchema),
   UserController.updateMyProfile
 );
