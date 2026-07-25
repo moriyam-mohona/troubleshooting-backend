@@ -8,7 +8,7 @@ export interface IUpdateCategoryInput {
   title?: string;
   subtitle?: string;
   subcategories?: Array<{
-    id: string;
+    id?: string;
     title: string;
   }>;
 }

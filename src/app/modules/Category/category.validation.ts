@@ -21,7 +21,7 @@ const updateCategoryZodSchema = z.object({
     subcategories: z
       .array(
         z.object({
-          id: z.string().min(1, "Subcategory ID is required."),
+          id: z.string().min(1, "Subcategory ID is required.").optional(),
           title: z.string().min(1, "Subcategory title cannot be empty."),
         })
       )

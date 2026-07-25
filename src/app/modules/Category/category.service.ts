@@ -134,23 +134,57 @@ const updateCategory = async (id: string, payload: IUpdateCategoryInput) => {
       });
     }
 
-    if (subcategories && subcategories.length > 0) {
+    if (subcategories !== undefined) {
+      const existingSubcategories = await tx.subCategory.findMany({
+        where: { categoryId: id },
+        select: { id: true },
+      });
+
+      const desiredExistingSubcategoryIds = subcategories
+        .map((subcategory) => subcategory.id)
+        .filter((subcategoryId): subcategoryId is string => Boolean(subcategoryId));
+
       for (const subcategory of subcategories) {
-        const existingSubcategory = await tx.subCategory.findFirst({
-          where: {
-            id: subcategory.id,
-            categoryId: id,
-          },
-        });
+        if (subcategory.id) {
+          const existingSubcategory = await tx.subCategory.findFirst({
+            where: {
+              id: subcategory.id,
+              categoryId: id,
+            },
+          });
 
-        if (!existingSubcategory) {
-          throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+          if (!existingSubcategory) {
+            throw new ApiError(httpStatus.NOT_FOUND, "Subcategory not found.");
+          }
+
+          await tx.subCategory.update({
+            where: { id: subcategory.id },
+            data: {
+              title: subcategory.title,
+            },
+          });
+        } else {
+          await tx.subCategory.create({
+            data: {
+              title: subcategory.title,
+              categoryId: id,
+            },
+          });
         }
+      }
 
-        await tx.subCategory.update({
-          where: { id: subcategory.id },
-          data: {
-            title: subcategory.title,
+      const existingSubcategoryIds = existingSubcategories.map((subcategory) => subcategory.id);
+      const subcategoryIdsToDelete = existingSubcategoryIds.filter(
+        (subcategoryId) => !desiredExistingSubcategoryIds.includes(subcategoryId)
+      );
+
+      if (subcategoryIdsToDelete.length > 0) {
+        await tx.subCategory.deleteMany({
+          where: {
+            categoryId: id,
+            id: {
+              in: subcategoryIdsToDelete,
+            },
           },
         });
       }
