@@ -1,5 +1,6 @@
 import express from "express";
 import { AuthRoutes } from "../modules/Auth/auth.route";
+import { DashboardRoutes } from "../modules/Dashboard/dashboard.route";
 import { CategoryRoutes } from "../modules/Category/category.route";
 import { DecisionTreeRoutes } from "../modules/DecisionTree/decisionTree.route";
 import { SubcategoryRoutes } from "../modules/Subcategory/subcategory.route";
@@ -17,6 +18,10 @@ const moduleRoutes = [
   {
     path: "/users",
     route: UserRoutes,
+  },
+  {
+    path: "/dashboard",
+    route: DashboardRoutes,
   },
   {
     path: "/categories",
