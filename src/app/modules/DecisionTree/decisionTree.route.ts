@@ -44,6 +44,50 @@ router.delete(
   DecisionTreeController.deleteDecisionTree
 );
 
+// START session for user / mobile app flow
+router.post(
+  "/session/start",
+  auth("USER", "SUPER_ADMIN"),
+  RequestValidation.validateRequest(DecisionTreeValidation.startSessionSchema),
+  DecisionTreeController.startSession
+);
+
+// RESTART session for user / mobile app flow
+router.post(
+  "/session/restart",
+  auth("USER", "SUPER_ADMIN"),
+  RequestValidation.validateRequest(DecisionTreeValidation.restartSessionSchema),
+  DecisionTreeController.restartSession
+);
+
+// GET user history list (All, In Progress, Solved)
+router.get(
+  "/history",
+  auth("USER", "SUPER_ADMIN"),
+  RequestValidation.validateRequest(DecisionTreeValidation.historyQuerySchema),
+  DecisionTreeController.getUserHistory
+);
+
+// GET specific session details (Continue flow)
+router.get(
+  "/session/:sessionId",
+  auth("USER", "SUPER_ADMIN"),
+  DecisionTreeController.getSessionById
+);
+
+// GET user stats (Self Solved count & Admin Support count)
+router.get(
+  "/user-stats",
+  auth("USER", "SUPER_ADMIN"),
+  DecisionTreeController.getUserStats
+);
+
+router.get(
+  "/stats",
+  auth("USER", "SUPER_ADMIN"),
+  DecisionTreeController.getUserStats
+);
+
 // TRAVERSE step-by-step for user / mobile app flow
 router.post(
   "/traverse",

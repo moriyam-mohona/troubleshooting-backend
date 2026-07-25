@@ -37,11 +37,28 @@ export const DecisionTreeValidation = {
       isDraft: z.boolean(),
     }),
   }),
+  startSessionSchema: z.object({
+    body: z.object({
+      subcategoryId: z.string().min(1, "Subcategory ID is required"),
+    }),
+  }),
+  restartSessionSchema: z.object({
+    body: z.object({
+      subcategoryId: z.string().min(1, "Subcategory ID is required"),
+    }),
+  }),
   traverseSchema: z.object({
     body: z.object({
       subcategoryId: z.string().min(1, "Subcategory ID is required"),
       questionId: z.string().min(1, "Question ID is required"),
       option: z.enum(["YES", "NO"]),
+      sessionId: z.string().optional(),
+    }),
+  }),
+  historyQuerySchema: z.object({
+    query: z.object({
+      status: z.enum(["ALL", "IN_PROGRESS", "SOLVED"]).optional(),
     }),
   }),
 };
+

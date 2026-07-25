@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role, SessionStatus } from "@prisma/client";
 import prisma from "../../../lib/prisma";
 
 type PeriodRange = {
@@ -493,7 +493,36 @@ const getDashboardSummary = async () => {
   };
 };
 
+const getUserStats = async (userId: string) => {
+  const [selfSolvedCount, adminSupportCount, inProgressCount] = await Promise.all([
+    prisma.userTreeSession.count({
+      where: {
+        userId,
+        status: SessionStatus.SOLVED,
+      },
+    }),
+    prisma.userQuestion.count({
+      where: {
+        userId,
+      },
+    }),
+    prisma.userTreeSession.count({
+      where: {
+        userId,
+        status: SessionStatus.IN_PROGRESS,
+      },
+    }),
+  ]);
+
+  return {
+    selfSolved: selfSolvedCount,
+    adminSupport: adminSupportCount,
+    inProgress: inProgressCount,
+  };
+};
+
 export const DashboardService = {
   getDashboardSummary,
   getRecentActivities,
+  getUserStats,
 };

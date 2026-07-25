@@ -73,13 +73,16 @@ const getDecisionTree = catchAsync(async (req: Request, res: Response) => {
 });
 
 const traverseDecisionTree = catchAsync(async (req: Request, res: Response) => {
-  const { subcategoryId, questionId, option } = req.body;
+  const { subcategoryId, questionId, option, sessionId } = req.body;
+  const userId = (req as any).user?.id;
   const userRole = (req as any).user?.role;
 
   const result = await DecisionTreeService.traverseDecisionTree(
     subcategoryId,
     questionId,
     option,
+    userId,
+    sessionId,
     userRole
   );
 
@@ -87,6 +90,77 @@ const traverseDecisionTree = catchAsync(async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     success: true,
     message: "Route evaluated successfully",
+    data: result,
+  });
+});
+
+const startSession = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const userRole = (req as any).user?.role;
+  const { subcategoryId } = req.body;
+
+  const result = await DecisionTreeService.startSession(userId, subcategoryId, userRole);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session started successfully",
+    data: result,
+  });
+});
+
+const restartSession = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const userRole = (req as any).user?.role;
+  const { subcategoryId } = req.body;
+
+  const result = await DecisionTreeService.restartSession(userId, subcategoryId, userRole);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session restarted successfully",
+    data: result,
+  });
+});
+
+const getUserHistory = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const status = req.query.status as any;
+
+  const result = await DecisionTreeService.getUserHistory(userId, status);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "History retrieved successfully",
+    data: result,
+  });
+});
+
+const getSessionById = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const sessionId = req.params.sessionId as string;
+
+  const result = await DecisionTreeService.getSessionById(userId, sessionId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session details fetched successfully",
+    data: result,
+  });
+});
+
+const getUserStats = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+
+  const result = await DecisionTreeService.getUserStats(userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "User stats retrieved successfully",
     data: result,
   });
 });
@@ -109,6 +183,11 @@ export const DecisionTreeController = {
   updateDecisionTree,
   toggleDraftStatus,
   getDecisionTree,
+  startSession,
+  restartSession,
   traverseDecisionTree,
+  getUserHistory,
+  getSessionById,
+  getUserStats,
   deleteDecisionTree,
 };

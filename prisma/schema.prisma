@@ -43,6 +43,7 @@ model User {
   otpTokens     OtpToken[]
   refreshTokens RefreshToken[]
   userQuestions UserQuestion[]
+  treeSessions  UserTreeSession[]
 }
 
 model OtpToken {
@@ -82,18 +83,19 @@ model Category {
 }
 
 model SubCategory {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
   title           String
-  categoryId      String         @db.ObjectId
-  category        Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId      String            @db.ObjectId
+  category        Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   // Starting root question of this decision tree
-  firstQuestionId String?        @db.ObjectId
-  firstQuestion   Question?      @relation("FirstQuestion", fields: [firstQuestionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  isDraft         Boolean        @default(true)
+  firstQuestionId String?           @db.ObjectId
+  firstQuestion   Question?         @relation("FirstQuestion", fields: [firstQuestionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  isDraft         Boolean           @default(true)
   questions       Question[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   userQuestions   UserQuestion[]
+  treeSessions    UserTreeSession[]
 
   @@index([categoryId])
 }
@@ -109,28 +111,30 @@ enum RouteType {
 }
 
 model Question {
-  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  id             String            @id @default(auto()) @map("_id") @db.ObjectId
   question       String
-  subCategoryId  String          @db.ObjectId
-  subCategory    SubCategory     @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  subCategoryId  String            @db.ObjectId
+  subCategory    SubCategory       @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
   // Outgoing routes from this question (Yes / No)
-  routes         QuestionRoute[] @relation("FromQuestion")
+  routes         QuestionRoute[]   @relation("FromQuestion")
   // Incoming routes pointing to this question as follow-up
-  incomingRoutes QuestionRoute[] @relation("ToQuestion")
-  firstFor       SubCategory[]   @relation("FirstQuestion")
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  incomingRoutes QuestionRoute[]   @relation("ToQuestion")
+  firstFor       SubCategory[]     @relation("FirstQuestion")
+  treeSessions   UserTreeSession[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@index([subCategoryId])
 }
 
 model Answer {
-  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  id             String            @id @default(auto()) @map("_id") @db.ObjectId
   whatsHappening String
   recommendedFix String
   incomingRoutes QuestionRoute[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  treeSessions   UserTreeSession[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
 model QuestionRoute {
@@ -201,5 +205,37 @@ model Support {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([status])
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  SOLVED
+}
+
+model UserTreeSession {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String        @db.ObjectId
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategoryId     String        @db.ObjectId
+  subcategory       SubCategory   @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+
+  currentQuestionId String?       @db.ObjectId
+  currentQuestion   Question?     @relation(fields: [currentQuestionId], references: [id], onDelete: SetNull)
+
+  currentStep       Int           @default(1)
+  status            SessionStatus @default(IN_PROGRESS)
+
+  // Dynamic history of choices taken: [{ step, questionId, questionText, optionChosen }]
+  historyPath       Json?
+
+  finalAnswerId     String?       @db.ObjectId
+  finalAnswer       Answer?       @relation(fields: [finalAnswerId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([subcategoryId])
   @@index([status])
 }

@@ -32,7 +32,21 @@ const getRecentActivities = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getUserStats = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+
+  const result = await DashboardService.getUserStats(userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "User stats retrieved successfully.",
+    data: result,
+  });
+});
+
 export const DashboardController = {
   getDashboardSummary,
   getRecentActivities,
+  getUserStats,
 };
