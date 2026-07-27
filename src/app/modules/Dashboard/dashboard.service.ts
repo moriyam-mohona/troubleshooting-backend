@@ -521,8 +521,114 @@ const getUserStats = async (userId: string) => {
   };
 };
 
+const getMostUsedCategories = async (limitParam?: string | number) => {
+  const limitValue = Number(limitParam ?? 5);
+  const limit = Number.isFinite(limitValue) && limitValue > 0 ? Math.min(limitValue, 10) : 5;
+
+  const now = new Date();
+  const currentWeekStart = getUtcStartOfWeek(now);
+
+  // Fetch tree sessions and user questions created strictly this week
+  const [sessions, questions] = await Promise.all([
+    prisma.userTreeSession.findMany({
+      where: {
+        createdAt: {
+          gte: currentWeekStart,
+          lte: now,
+        },
+      },
+      select: {
+        subcategoryId: true,
+      },
+    }),
+    prisma.userQuestion.findMany({
+      where: {
+        createdAt: {
+          gte: currentWeekStart,
+          lte: now,
+        },
+      },
+      select: {
+        subcategoryId: true,
+      },
+    }),
+  ]);
+
+  if (sessions.length === 0 && questions.length === 0) {
+    return {
+      totalOpens: 0,
+      categories: [],
+    };
+  }
+
+  const subcategoryIds = [
+    ...new Set([
+      ...sessions.map((s) => s.subcategoryId),
+      ...questions.map((q) => q.subcategoryId),
+    ]),
+  ];
+
+  const subcategories = await prisma.subCategory.findMany({
+    where: { id: { in: subcategoryIds } },
+    select: {
+      id: true,
+      title: true,
+      category: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  });
+
+  const subcategoryToCategoryMap = new Map<string, { id: string; title: string }>();
+  subcategories.forEach((sub) => {
+    if (sub.category) {
+      subcategoryToCategoryMap.set(sub.id, sub.category);
+    } else {
+      subcategoryToCategoryMap.set(sub.id, { id: sub.id, title: sub.title });
+    }
+  });
+
+  const categoryCountMap = new Map<string, { id: string; title: string; count: number }>();
+
+  const recordUsage = (subcategoryId: string) => {
+    const cat = subcategoryToCategoryMap.get(subcategoryId);
+    if (cat) {
+      const existing = categoryCountMap.get(cat.id) || { id: cat.id, title: cat.title, count: 0 };
+      existing.count += 1;
+      categoryCountMap.set(cat.id, existing);
+    }
+  };
+
+  sessions.forEach((s) => recordUsage(s.subcategoryId));
+  questions.forEach((q) => recordUsage(q.subcategoryId));
+
+  const sortedCategories = Array.from(categoryCountMap.values()).sort(
+    (a, b) => b.count - a.count
+  );
+
+  const totalOpens = sortedCategories.reduce((sum, item) => sum + item.count, 0);
+
+  const topCategories = sortedCategories.slice(0, limit).map((cat) => {
+    const percentage = totalOpens > 0 ? Math.round((cat.count / totalOpens) * 100) : 0;
+    return {
+      id: cat.id,
+      title: cat.title,
+      count: cat.count,
+      percentage,
+    };
+  });
+
+  return {
+    categories: topCategories,
+  };
+};
+
 export const DashboardService = {
   getDashboardSummary,
   getRecentActivities,
   getUserStats,
+  getMostUsedCategories,
 };

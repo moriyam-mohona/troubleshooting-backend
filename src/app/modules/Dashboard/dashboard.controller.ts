@@ -45,8 +45,22 @@ const getUserStats = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMostUsedCategories = catchAsync(async (req: Request, res: Response) => {
+  const limit = typeof req.query.limit === "string" ? req.query.limit : undefined;
+
+  const result = await DashboardService.getMostUsedCategories(limit);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Most used categories retrieved successfully.",
+    data: result,
+  });
+});
+
 export const DashboardController = {
   getDashboardSummary,
   getRecentActivities,
   getUserStats,
+  getMostUsedCategories,
 };

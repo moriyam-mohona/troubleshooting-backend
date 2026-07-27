@@ -59,9 +59,9 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
   const categories = await prisma.category.findMany({
     where: whereConditions,
     include: {
-      subcategories: {
-        orderBy: {
-          createdAt: "asc",
+      _count: {
+        select: {
+          subcategories: true,
         },
       },
     },
@@ -70,27 +70,10 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
     },
   });
 
-  const formattedCategories = await Promise.all(
-    categories.map(async (category) => {
-      let subcategories = category.subcategories;
-
-      if (subcategories.length === 0) {
-        const defaultSubcategory = await prisma.subCategory.create({
-          data: {
-            title: "Others",
-            categoryId: category.id,
-          },
-        });
-        subcategories = [defaultSubcategory];
-      }
-
-      return {
-        ...category,
-        subcategories,
-        subcategoryCount: subcategories.length,
-      };
-    })
-  );
+  const formattedCategories = categories.map(({ _count, ...category }) => ({
+    ...category,
+    subcategoryCount: _count.subcategories,
+  }));
 
   return formattedCategories;
 };
