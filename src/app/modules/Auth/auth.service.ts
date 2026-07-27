@@ -77,7 +77,7 @@ const register = async (userData: IUser) => {
       name: userData.name,
       password: hashedPassword,
     },
-    select: { id: true, name: true, email: true, role: true, isEmailVerified: true },
+    select: { id: true, name: true, email: true, profilePicture: true, role: true, isEmailVerified: true },
   });
 
   // Send verification OTP
@@ -139,6 +139,7 @@ const login = async (loginData: ILoginInput) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      profilePicture: user.profilePicture,
       role: user.role,
       isEmailVerified: user.isEmailVerified,
     },
@@ -267,6 +268,7 @@ const verifyEmail = async ({ email, otp }: IVerifyEmailInput) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      profilePicture: user.profilePicture,
       role: user.role,
       isEmailVerified: true,
     },
@@ -391,10 +393,12 @@ const getMe = async (id: string) => {
       email: true,
       profilePicture: true,
       role: true,
+      status: true,
       isEmailVerified: true,
       isActive: true,
       lastLogin: true,
       createdAt: true,
+      updatedAt: true,
     },
   });
 
