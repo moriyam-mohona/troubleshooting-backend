@@ -57,3 +57,37 @@ export const imageUploader = multer({
     files: 1,
   },
 });
+
+import config from "../../config";
+
+/**
+ * Utility to construct full URL for an uploaded file
+ */
+export const getFullImageUrl = (
+  req: Request,
+  fileOrPath?: string | Express.Multer.File | null
+): string | undefined => {
+  if (!fileOrPath) return undefined;
+
+  let relativePath = "";
+  if (typeof fileOrPath === "object" && fileOrPath.filename) {
+    relativePath = `/uploads/images/${fileOrPath.filename}`;
+  } else if (typeof fileOrPath === "string") {
+    if (fileOrPath.startsWith("http://") || fileOrPath.startsWith("https://")) {
+      return fileOrPath;
+    }
+    relativePath = fileOrPath.startsWith("/") ? fileOrPath : `/${fileOrPath}`;
+  }
+
+  if (!relativePath) return undefined;
+
+  if (config.app.backendUrl && process.env.BACKEND_URL) {
+    const baseUrl = config.app.backendUrl.replace(/\/$/, "");
+    return `${baseUrl}${relativePath}`;
+  }
+
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.get("host") || `localhost:${config.port}`;
+
+  return `${protocol}://${host}${relativePath}`;
+};

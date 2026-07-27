@@ -117,7 +117,7 @@ const updateMyProfile = async (
   }
 
   let profilePicturePath = payload.profilePicture;
-  if (file) {
+  if (file && !profilePicturePath) {
     profilePicturePath = `/uploads/images/${file.filename}`;
   }
 

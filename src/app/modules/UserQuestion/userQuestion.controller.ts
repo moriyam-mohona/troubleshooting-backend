@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import catchAsync from "../../../shared/catchAsync";
 import pick from "../../../shared/pick";
 import sendResponse from "../../../shared/sendResponse";
+import { getFullImageUrl } from "../../../helpers/file_uploader/imageUploader";
 import { UserQuestionService } from "./userQuestion.service";
 
 const createUserQuestion = catchAsync(async (req: Request, res: Response) => {
@@ -10,7 +11,9 @@ const createUserQuestion = catchAsync(async (req: Request, res: Response) => {
   let imagePath: string | undefined;
 
   if (req.file) {
-    imagePath = `/uploads/images/${req.file.filename}`;
+    imagePath = getFullImageUrl(req, req.file);
+  } else if (req.body.image) {
+    imagePath = getFullImageUrl(req, req.body.image);
   }
 
   const result = await UserQuestionService.createUserQuestion(userId, req.body, imagePath);

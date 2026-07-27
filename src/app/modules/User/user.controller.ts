@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import httpStatus from "http-status";
+import { getFullImageUrl } from "../../../helpers/file_uploader/imageUploader";
 import catchAsync from "../../../shared/catchAsync";
 import pick from "../../../shared/pick";
 import sendResponse from "../../../shared/sendResponse";
@@ -34,6 +35,13 @@ const getSingleUser = catchAsync(async (req: Request, res: Response) => {
 
 const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
+
+  if (req.file) {
+    req.body.profilePicture = getFullImageUrl(req, req.file);
+  } else if (req.body.profilePicture) {
+    req.body.profilePicture = getFullImageUrl(req, req.body.profilePicture);
+  }
+
   const result = await UserService.updateMyProfile(userId, req.body, req.file);
 
   sendResponse(res, {
