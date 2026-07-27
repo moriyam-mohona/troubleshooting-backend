@@ -110,7 +110,39 @@ const createUserQuestion = async (
   payload: ICreateUserQuestionInput,
   imagePath?: string
 ) => {
-  const { subcategoryId, description } = payload;
+  let { subcategoryId, categoryId, description } = payload;
+
+  if (!subcategoryId && categoryId) {
+    const existingCategory = await prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+
+    if (!existingCategory) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Target category not found.");
+    }
+
+    let othersSubcategory = await prisma.subCategory.findFirst({
+      where: { categoryId },
+    });
+
+    if (!othersSubcategory) {
+      othersSubcategory = await prisma.subCategory.create({
+        data: {
+          title: "Others",
+          categoryId,
+        },
+      });
+    }
+
+    subcategoryId = othersSubcategory.id;
+  }
+
+  if (!subcategoryId) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Either subcategoryId or categoryId must be provided."
+    );
+  }
 
   const existingSubcategory = await prisma.subCategory.findUnique({
     where: { id: subcategoryId },
@@ -138,7 +170,7 @@ const getAllUserQuestions = async (
   filters: IUserQuestionFilterRequest,
   options: IPaginationOptions
 ) => {
-  const { searchTerm, status, subcategoryId } = filters;
+  const { searchTerm, status, subcategoryId, categoryId } = filters;
 
   const page = Number(options.page || 1);
   const limit = Number(options.limit || 10);
@@ -163,6 +195,10 @@ const getAllUserQuestions = async (
 
   if (subcategoryId) {
     andConditions.push({ subcategoryId });
+  }
+
+  if (categoryId) {
+    andConditions.push({ subcategory: { categoryId } });
   }
 
   const whereConditions: Prisma.UserQuestionWhereInput =

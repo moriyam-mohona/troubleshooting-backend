@@ -1,7 +1,8 @@
 import { UserQuestionStatus } from "@prisma/client";
 
 export interface ICreateUserQuestionInput {
-  subcategoryId: string;
+  subcategoryId?: string;
+  categoryId?: string;
   description: string;
   image?: string;
 }
@@ -14,6 +15,7 @@ export interface IUserQuestionFilterRequest {
   searchTerm?: string;
   status?: UserQuestionStatus;
   subcategoryId?: string;
+  categoryId?: string;
 }
 
 export interface IPaginationOptions {

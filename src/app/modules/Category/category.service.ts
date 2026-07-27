@@ -15,14 +15,18 @@ const createCategory = async (payload: ICreateCategoryInput) => {
     data: {
       title,
       subtitle,
-      ...(subcategories &&
-        subcategories.length > 0 && {
-          subcategories: {
-            create: subcategories.map((sub) => ({
-              title: sub.title,
-            })),
-          },
-        }),
+      subcategories: {
+        create:
+          subcategories && subcategories.length > 0
+            ? subcategories.map((sub) => ({
+                title: sub.title,
+              }))
+            : [
+                {
+                  title: "Others",
+                },
+              ],
+      },
     },
     include: {
       subcategories: true,
@@ -55,9 +59,9 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
   const categories = await prisma.category.findMany({
     where: whereConditions,
     include: {
-      _count: {
-        select: {
-          subcategories: true,
+      subcategories: {
+        orderBy: {
+          createdAt: "asc",
         },
       },
     },
@@ -66,10 +70,27 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
     },
   });
 
-  const formattedCategories = categories.map(({ _count, ...category }) => ({
-    ...category,
-    subcategoryCount: _count.subcategories,
-  }));
+  const formattedCategories = await Promise.all(
+    categories.map(async (category) => {
+      let subcategories = category.subcategories;
+
+      if (subcategories.length === 0) {
+        const defaultSubcategory = await prisma.subCategory.create({
+          data: {
+            title: "Others",
+            categoryId: category.id,
+          },
+        });
+        subcategories = [defaultSubcategory];
+      }
+
+      return {
+        ...category,
+        subcategories,
+        subcategoryCount: subcategories.length,
+      };
+    })
+  );
 
   return formattedCategories;
 };
@@ -90,9 +111,22 @@ const getSingleCategory = async (id: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
+  let subcategories = category.subcategories;
+
+  if (subcategories.length === 0) {
+    const defaultSubcategory = await prisma.subCategory.create({
+      data: {
+        title: "Others",
+        categoryId: category.id,
+      },
+    });
+    subcategories = [defaultSubcategory];
+  }
+
   return {
-    subcategoryCount: category.subcategories.length,
     ...category,
+    subcategories,
+    subcategoryCount: subcategories.length,
   };
 };
 
@@ -105,12 +139,22 @@ const getSubcategoriesByCategoryId = async (categoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  const subcategories = await prisma.subCategory.findMany({
+  let subcategories = await prisma.subCategory.findMany({
     where: { categoryId },
     orderBy: {
       createdAt: "asc",
     },
   });
+
+  if (subcategories.length === 0) {
+    const defaultSubcategory = await prisma.subCategory.create({
+      data: {
+        title: "Others",
+        categoryId,
+      },
+    });
+    subcategories = [defaultSubcategory];
+  }
 
   return subcategories;
 };

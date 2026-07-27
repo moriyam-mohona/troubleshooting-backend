@@ -24,7 +24,7 @@ const createUserQuestion = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllUserQuestions = catchAsync(async (req: Request, res: Response) => {
-  const filters = pick(req.query, ["searchTerm", "status", "subcategoryId"]);
+  const filters = pick(req.query, ["searchTerm", "status", "subcategoryId", "categoryId"]);
   const options = pick(req.query, ["page", "limit"]);
 
   const result = await UserQuestionService.getAllUserQuestions(filters, options);
