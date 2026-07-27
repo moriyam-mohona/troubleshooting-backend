@@ -113,9 +113,49 @@ export const initiateSuperAdmin = async () => {
   console.log(`✅ Super Admin seeded: ${payload.email}`);
 };
 
+export const initiateOthersCategory = async () => {
+  const existing = await prisma.category.findFirst({
+    where: {
+      OR: [
+        { title: { equals: "Others", mode: "insensitive" } },
+        { title: { equals: "Other", mode: "insensitive" } },
+      ],
+    },
+  });
+
+  if (existing) {
+    if (!(existing as any).isSystem) {
+      await prisma.category.update({
+        where: { id: existing.id },
+        data: { isSystem: true } as any,
+      });
+    }
+    return existing;
+  }
+
+  const category = await prisma.category.create({
+    data: {
+      title: "Others",
+      subtitle: "General inquiries and miscellaneous questions",
+      isSystem: true,
+      subcategories: {
+        create: [
+          {
+            title: "Others",
+          },
+        ],
+      },
+    } as any,
+  });
+
+  console.log("✅ System 'Others' category initiated");
+  return category;
+};
+
 async function main() {
   console.log("🌱 Seeding database...");
   await initiateSuperAdmin();
+  await initiateOthersCategory();
   console.log("\n🎉 Seeding complete!");
 }
 

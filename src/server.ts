@@ -4,7 +4,7 @@ import config from "./config";
 import prisma from "./lib/prisma";
 import redis from "./lib/redisConnection";
 import logger from "./utils/logger/logger";
-import { initiateSuperAdmin } from "./app/db/seed";
+import { initiateOthersCategory, initiateSuperAdmin } from "./app/db/seed";
 
 let server: Server;
 
@@ -23,9 +23,11 @@ async function main() {
       logger.info(`📄 API docs: http://localhost:${config.port}/api/docs`);
     });
 
-    // 4. Initiate super admin if not exist
+    // 4. Initiate super admin & system categories if not exist
     await initiateSuperAdmin();
     logger.info("✅ Super admin initiated");
+    await initiateOthersCategory();
+    logger.info("✅ System 'Others' category initiated");
 
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {

@@ -14,6 +14,18 @@ const createSubcategory = async (payload: ICreateSubcategoryInput) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Target category not found.");
   }
 
+  const isOthers =
+    (existingCategory as any).isSystem ||
+    existingCategory.title.trim().toLowerCase() === "others" ||
+    existingCategory.title.trim().toLowerCase() === "other";
+
+  if (isOthers) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Subcategories cannot be created under the 'Others' system category."
+    );
+  }
+
   const subcategory = await prisma.subCategory.create({
     data: {
       title,

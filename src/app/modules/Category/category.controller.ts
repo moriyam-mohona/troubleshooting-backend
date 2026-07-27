@@ -18,7 +18,8 @@ const createCategory = catchAsync(async (req: Request, res: Response) => {
 
 const getAllCategories = catchAsync(async (req: Request, res: Response) => {
   const filters = pick(req.query, ["searchTerm"]);
-  const result = await CategoryService.getAllCategories(filters);
+  const userRole = (req as any).user?.role;
+  const result = await CategoryService.getAllCategories(filters, userRole);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

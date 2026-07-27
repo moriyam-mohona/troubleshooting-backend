@@ -8,8 +8,20 @@ import {
   IUpdateCategoryInput,
 } from "./category.interface";
 
+const isReservedTitle = (title: string) => {
+  const normalized = title.trim().toLowerCase();
+  return normalized === "others" || normalized === "other";
+};
+
 const createCategory = async (payload: ICreateCategoryInput) => {
   const { title, subtitle, subcategories } = payload;
+
+  if (isReservedTitle(title)) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "The 'Others' category is a system category and already exists."
+    );
+  }
 
   const category = await prisma.category.create({
     data: {
@@ -21,11 +33,7 @@ const createCategory = async (payload: ICreateCategoryInput) => {
             ? subcategories.map((sub) => ({
                 title: sub.title,
               }))
-            : [
-                {
-                  title: "Others",
-                },
-              ],
+            : [],
       },
     },
     include: {
@@ -39,7 +47,7 @@ const createCategory = async (payload: ICreateCategoryInput) => {
   };
 };
 
-const getAllCategories = async (filters: ICategoryFilterRequest) => {
+const getAllCategories = async (filters: ICategoryFilterRequest, _userRole?: string) => {
   const { searchTerm } = filters;
 
   const andConditions: Prisma.CategoryWhereInput[] = [];
@@ -72,7 +80,8 @@ const getAllCategories = async (filters: ICategoryFilterRequest) => {
 
   const formattedCategories = categories.map(({ _count, ...category }) => ({
     ...category,
-    subcategoryCount: _count.subcategories,
+    subcategoryCount:
+      (category as any).isSystem || isReservedTitle(category.title) ? 0 : _count.subcategories,
   }));
 
   return formattedCategories;
@@ -94,22 +103,13 @@ const getSingleCategory = async (id: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  let subcategories = category.subcategories;
-
-  if (subcategories.length === 0) {
-    const defaultSubcategory = await prisma.subCategory.create({
-      data: {
-        title: "Others",
-        categoryId: category.id,
-      },
-    });
-    subcategories = [defaultSubcategory];
-  }
+  const isSys = (category as any).isSystem || isReservedTitle(category.title);
+  const subcategories = isSys ? [] : category.subcategories;
 
   return {
     ...category,
     subcategories,
-    subcategoryCount: subcategories.length,
+    subcategoryCount: isSys ? 0 : subcategories.length,
   };
 };
 
@@ -122,22 +122,16 @@ const getSubcategoriesByCategoryId = async (categoryId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
   }
 
-  let subcategories = await prisma.subCategory.findMany({
+  if ((category as any).isSystem || isReservedTitle(category.title)) {
+    return [];
+  }
+
+  const subcategories = await prisma.subCategory.findMany({
     where: { categoryId },
     orderBy: {
       createdAt: "asc",
     },
   });
-
-  if (subcategories.length === 0) {
-    const defaultSubcategory = await prisma.subCategory.create({
-      data: {
-        title: "Others",
-        categoryId,
-      },
-    });
-    subcategories = [defaultSubcategory];
-  }
 
   return subcategories;
 };
@@ -149,6 +143,20 @@ const updateCategory = async (id: string, payload: IUpdateCategoryInput) => {
 
   if (!existingCategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
+  }
+
+  if ((existingCategory as any).isSystem || isReservedTitle(existingCategory.title)) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "The 'Others' system category cannot be updated."
+    );
+  }
+
+  if (payload.title && isReservedTitle(payload.title)) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Cannot rename a category to reserved system title 'Others'."
+    );
   }
 
   const { subcategories, ...categoryData } = payload;
@@ -246,6 +254,13 @@ const deleteCategory = async (id: string) => {
 
   if (!existingCategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Category not found.");
+  }
+
+  if ((existingCategory as any).isSystem || isReservedTitle(existingCategory.title)) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "The 'Others' system category cannot be deleted."
+    );
   }
 
   const deletedCategory = await prisma.category.delete({
