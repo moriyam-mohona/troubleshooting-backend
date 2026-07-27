@@ -1,4 +1,4 @@
-import { RouteOption, RouteType, SessionStatus } from "@prisma/client";
+import { RouteOption, RouteType, SessionStatus, UserQuestionStatus } from "@prisma/client";
 import httpStatus from "http-status";
 import ApiError from "../../../errors/apiError";
 import prisma from "../../../lib/prisma";
@@ -564,23 +564,44 @@ const traverseDecisionTree = async (
       ? (session.historyPath as any[])
       : [];
 
-    const newHistoryItem = {
-      step: session.currentStep,
-      questionId,
-      questionText: route.question?.question || "",
-      optionChosen: option,
-      timestamp: new Date().toISOString(),
-    };
+    const existingIndex = existingHistory.findIndex(
+      (item) => item.questionId === questionId
+    );
 
-    const updatedHistory = [...existingHistory, newHistoryItem];
-    const nextStep = session.currentStep + 1;
+    let updatedHistory: any[];
+    let currentStepForNode: number;
+
+    if (existingIndex !== -1) {
+      currentStepForNode = existingIndex + 1;
+      const truncatedHistory = existingHistory.slice(0, existingIndex);
+      const newHistoryItem = {
+        step: currentStepForNode,
+        questionId,
+        questionText: route.question?.question || "",
+        optionChosen: option,
+        timestamp: new Date().toISOString(),
+      };
+      updatedHistory = [...truncatedHistory, newHistoryItem];
+    } else {
+      currentStepForNode = existingHistory.length + 1;
+      const newHistoryItem = {
+        step: currentStepForNode,
+        questionId,
+        questionText: route.question?.question || "",
+        optionChosen: option,
+        timestamp: new Date().toISOString(),
+      };
+      updatedHistory = [...existingHistory, newHistoryItem];
+    }
+
+    const nextStep = updatedHistory.length + 1;
 
     if (isAnswer && route.nextAnswer) {
       const updatedSession = await prisma.userTreeSession.update({
         where: { id: session.id },
         data: {
-          status: SessionStatus.SOLVED,
-          currentQuestionId: null,
+          status: SessionStatus.IN_PROGRESS,
+          currentQuestionId: questionId,
           finalAnswerId: route.nextAnswer.id,
           currentStep: nextStep,
           historyPath: updatedHistory,
@@ -590,8 +611,9 @@ const traverseDecisionTree = async (
       return {
         sessionId: updatedSession.id,
         currentStep: nextStep,
-        isComplete: true,
-        status: SessionStatus.SOLVED,
+        isComplete: false,
+        hasDiagnosis: true,
+        status: SessionStatus.IN_PROGRESS,
         nextType: RouteType.ANSWER,
         answer: {
           id: route.nextAnswer.id,
@@ -658,18 +680,35 @@ const getUserHistory = async (
     whereCondition.status = statusFilter as SessionStatus;
   }
 
-  const sessions = await prisma.userTreeSession.findMany({
-    where: whereCondition,
-    include: {
-      subcategory: {
-        include: {
-          category: { select: { id: true, title: true } },
+  const [sessions, userQuestions] = await Promise.all([
+    prisma.userTreeSession.findMany({
+      where: whereCondition,
+      include: {
+        subcategory: {
+          include: {
+            category: { select: { id: true, title: true } },
+          },
         },
+        currentQuestion: { select: { id: true, question: true } },
+        finalAnswer: { select: { id: true, whatsHappening: true, recommendedFix: true } },
       },
-      currentQuestion: { select: { id: true, question: true } },
-      finalAnswer: { select: { id: true, whatsHappening: true, recommendedFix: true } },
-    },
-    orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.userQuestion.findMany({
+      where: { userId },
+      select: {
+        subcategoryId: true,
+        status: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
+
+  const userQuestionStatusMap = new Map<string, UserQuestionStatus>();
+  userQuestions.forEach((uq) => {
+    if (!userQuestionStatusMap.has(uq.subcategoryId)) {
+      userQuestionStatusMap.set(uq.subcategoryId, uq.status);
+    }
   });
 
   return sessions.map((session) => {
@@ -684,6 +723,8 @@ const getUserHistory = async (
       lastQuestionText = session.subcategory.title;
     }
 
+    const adminQuestionStatus = userQuestionStatusMap.get(session.subcategoryId) || null;
+
     return {
       sessionId: session.id,
       subcategoryId: session.subcategoryId,
@@ -692,6 +733,7 @@ const getUserHistory = async (
       lastQuestionText,
       currentStep: session.currentStep,
       status: session.status,
+      adminQuestionStatus,
       canContinue: session.status === SessionStatus.IN_PROGRESS && !!session.currentQuestionId,
       updatedAt: session.updatedAt,
       createdAt: session.createdAt,
@@ -836,6 +878,47 @@ const getUserStats = async (userId: string) => {
   };
 };
 
+const markSessionResolved = async (
+  userId: string,
+  questionId: string,
+  sessionId?: string,
+  subcategoryId?: string
+) => {
+  let session = null;
+  if (sessionId) {
+    session = await prisma.userTreeSession.findFirst({
+      where: { id: sessionId, userId },
+    });
+  }
+
+  if (!session && subcategoryId) {
+    session = await prisma.userTreeSession.findFirst({
+      where: { userId, subcategoryId },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  if (!session) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Troubleshooting session not found.");
+  }
+
+  const updatedSession = await prisma.userTreeSession.update({
+    where: { id: session.id },
+    data: {
+      status: SessionStatus.SOLVED,
+      currentQuestionId: null,
+    },
+  });
+
+  return {
+    sessionId: updatedSession.id,
+    subcategoryId: updatedSession.subcategoryId,
+    questionId,
+    status: SessionStatus.SOLVED,
+    isComplete: true,
+  };
+};
+
 export const DecisionTreeService = {
   saveDecisionTree,
   updateDecisionTree: saveDecisionTree,
@@ -848,4 +931,5 @@ export const DecisionTreeService = {
   getSessionById,
   getUserStats,
   deleteDecisionTree,
+  markSessionResolved,
 };

@@ -178,6 +178,25 @@ const deleteDecisionTree = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const markSessionResolved = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const { sessionId, subcategoryId, questionId } = req.body;
+
+  const result = await DecisionTreeService.markSessionResolved(
+    userId,
+    questionId,
+    sessionId,
+    subcategoryId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session marked as resolved successfully",
+    data: result,
+  });
+});
+
 export const DecisionTreeController = {
   saveDecisionTree,
   updateDecisionTree,
@@ -190,4 +209,5 @@ export const DecisionTreeController = {
   getSessionById,
   getUserStats,
   deleteDecisionTree,
+  markSessionResolved,
 };

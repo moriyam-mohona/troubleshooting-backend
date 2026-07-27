@@ -88,6 +88,14 @@ router.get(
   DecisionTreeController.getUserStats
 );
 
+// RESOLVE session manually when user clicks "Mark as Resolved"
+router.post(
+  "/session/resolve",
+  auth("USER", "SUPER_ADMIN"),
+  RequestValidation.validateRequest(DecisionTreeValidation.markResolvedSchema),
+  DecisionTreeController.markSessionResolved
+);
+
 // TRAVERSE step-by-step for user / mobile app flow
 router.post(
   "/traverse",

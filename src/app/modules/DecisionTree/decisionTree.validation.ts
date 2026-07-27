@@ -60,5 +60,12 @@ export const DecisionTreeValidation = {
       status: z.enum(["ALL", "IN_PROGRESS", "SOLVED"]).optional(),
     }),
   }),
+  markResolvedSchema: z.object({
+    body: z.object({
+      sessionId: z.string().optional(),
+      subcategoryId: z.string().optional(),
+      questionId: z.string().min(1, "Question ID is required"),
+    }),
+  }),
 };
 
