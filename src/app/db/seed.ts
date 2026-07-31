@@ -78,39 +78,60 @@ import bcrypt from "bcryptjs";
 import prisma from "../../lib/prisma";
 
 export const initiateSuperAdmin = async () => {
-  const payload = {
-    name: "Super Admin",
-    email: "superadmin@yopmail.com",
-    password: "12345678",
-    role: Role.SUPER_ADMIN,
-    isEmailVerified: true,
-    isActive: true,
-  };
-
-  const existingSuperAdmin = await prisma.user.findUnique({
-    where: {
-      email: payload.email,
+  const superAdmins = [
+    {
+      name: "Super Admin",
+      email: "superadmin@yopmail.com",
+      password: "12345678",
+      role: Role.SUPER_ADMIN,
+      isEmailVerified: true,
+      isActive: true,
     },
-    select: { id: true },
-  });
+    {
+      name: "Admin",
+      email: "swedishkris004@gmail.com",
+      password: "12345678",
+      role: Role.SUPER_ADMIN,
+      isEmailVerified: true,
+      isActive: true,
+    },
+  ];
 
-  if (existingSuperAdmin) {
-    return;
+  for (const adminData of superAdmins) {
+    const existingSuperAdmin = await prisma.user.findUnique({
+      where: {
+        email: adminData.email,
+      },
+      select: { id: true },
+    });
+
+    const hashedPassword = await bcrypt.hash(adminData.password, 12);
+
+    if (existingSuperAdmin) {
+      await prisma.user.update({
+        where: { email: adminData.email },
+        data: {
+          password: hashedPassword,
+          role: adminData.role,
+          isEmailVerified: true,
+          isActive: true,
+        },
+      });
+      console.log(`✅ Super Admin updated: ${adminData.email}`);
+    } else {
+      await prisma.user.create({
+        data: {
+          name: adminData.name,
+          email: adminData.email,
+          password: hashedPassword,
+          role: adminData.role,
+          isEmailVerified: adminData.isEmailVerified,
+          isActive: adminData.isActive,
+        },
+      });
+      console.log(`✅ Super Admin seeded: ${adminData.email}`);
+    }
   }
-
-  const hashedPassword = await bcrypt.hash(payload.password, 12);
-
-  await prisma.user.create({
-    data: {
-      name: payload.name,
-      email: payload.email,
-      password: hashedPassword,
-      role: payload.role,
-      isEmailVerified: payload.isEmailVerified,
-      isActive: payload.isActive,
-    },
-  });
-  console.log(`✅ Super Admin seeded: ${payload.email}`);
 };
 
 export const initiateOthersCategory = async () => {
