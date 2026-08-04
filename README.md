@@ -27,7 +27,6 @@ Powers the **Troubleshooting Platform**, an interactive diagnostic system enabli
   - [Prerequisites](#1-prerequisites)
   - [Local Setup](#2-local-setup)
   - [Docker Setup](#3-docker-setup)
-- [CLI Module Scaffold Generator](#cli-module-scaffold-generator)
 - [Security Features](#security-features)
 - [Logging System](#logging-system)
 - [Production Deployment Checklist](#production-deployment-checklist)
@@ -302,31 +301,6 @@ docker compose logs -f app
 # 5. Shutdown services
 docker compose down
 ```
-
----
-
-## CLI Module Scaffold Generator
-
-This repository includes an automated code generator to quickly scaffold new feature modules following the project's layered architecture:
-
-```bash
-# Scaffold a new module (Interface, Validation, Service, Controller, Route + Auto-register in routes/index.ts)
-npm run module:create -- Diagnostic
-
-# Scaffold without auto-registering route
-npm run module:create:no-route -- Ticket
-
-# Force overwrite existing module files
-npm run module:create -- Diagnostic --force
-```
-
-Generates:
-1. `src/app/modules/Diagnostic/diagnostic.interface.ts`
-2. `src/app/modules/Diagnostic/diagnostic.validation.ts`
-3. `src/app/modules/Diagnostic/diagnostic.service.ts`
-4. `src/app/modules/Diagnostic/diagnostic.controller.ts`
-5. `src/app/modules/Diagnostic/diagnostic.route.ts`
-6. Automatically mounts `/api/v1/diagnostic` route in `src/app/routes/index.ts`
 
 ---
 
