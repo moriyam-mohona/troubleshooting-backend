@@ -1,683 +1,457 @@
-# Backend Starter Pack
+# Troubleshooting Backend API
 
-Production-focused backend starter built with **Express 5 + TypeScript + Prisma (MongoDB)**.
-It includes authentication, OTP email flow, role-based access control, Redis token blacklist, Swagger docs, testing, Docker, and structured logging.
+Production-grade RESTful API built with **Express 5 + TypeScript + Prisma (MongoDB) + Redis**.  
+Powers the **Troubleshooting Platform**, an interactive diagnostic system enabling users to step through decision trees (Yes/No troubleshooting nodes), track session progress, submit custom questions with screenshot uploads, raise support tickets, and view analytics.
 
 ---
 
 ## Table of Contents
 
-- [What You Get](#what-you-get)
+- [Project Overview](#project-overview)
+- [Key Features](#key-features)
 - [Tech Stack](#tech-stack)
-- [Architecture & Folder Layout](#architecture--folder-layout)
-- [Quick Start (Local)](#quick-start-local)
-- [Quick Start (Docker)](#quick-start-docker)
+- [Architecture & Directory Structure](#architecture--directory-structure)
+- [Interactive Decision Tree Engine](#interactive-decision-tree-engine)
+- [Comprehensive API Endpoints Reference](#comprehensive-api-endpoints-reference)
+  - [Auth Module (`/api/v1/auth`)](#1-auth-module-apiv1auth)
+  - [User Management (`/api/v1/users`)](#2-user-management-apiv1users)
+  - [Category Module (`/api/v1/categories`)](#3-category-module-apiv1categories)
+  - [Subcategory Module (`/api/v1/subcategories`)](#4-subcategory-module-apiv1subcategories)
+  - [Decision Tree Engine (`/api/v1/decision-tree`)](#5-decision-tree-engine-apiv1decision-tree)
+  - [User Questions (`/api/v1/user-questions`)](#6-user-questions-apiv1user-questions)
+  - [Support Tickets (`/api/v1/support`)](#7-support-tickets-apiv1support)
+  - [Dashboard & Analytics (`/api/v1/dashboard`)](#8-dashboard--analytics-apiv1dashboard)
+- [Database Schema & Prisma Models](#database-schema--prisma-models)
+- [Request / Response Format](#request--response-format)
 - [Environment Variables](#environment-variables)
-- [Available Scripts](#available-scripts)
-- [API & Swagger](#api--swagger)
-- [Auth Module Guide](#auth-module-guide)
-- [Request/Response Pattern](#requestresponse-pattern)
-- [How to Add a New Module](#how-to-add-a-new-module)
-- [Database & Prisma Notes](#database--prisma-notes)
-- [Testing Guide](#testing-guide)
-- [Logging Guide](#logging-guide)
+- [Quick Start Guide](#quick-start-guide)
+  - [Prerequisites](#1-prerequisites)
+  - [Local Setup](#2-local-setup)
+  - [Docker Setup](#3-docker-setup)
+- [CLI Module Scaffold Generator](#cli-module-scaffold-generator)
 - [Security Features](#security-features)
-- [Troubleshooting (If You Get Stuck)](#troubleshooting-if-you-get-stuck)
+- [Logging System](#logging-system)
 - [Production Deployment Checklist](#production-deployment-checklist)
 
 ---
 
-## What You Get
+## Project Overview
 
-- ✅ **Production-ready middleware stack** (Helmet, CORS, HPP, request limits)
-- ✅ **JWT auth + refresh token rotation**
-- ✅ **Role-based authorization** (`USER`, `ADMIN`, `SUPER_ADMIN`)
-- ✅ **OTP-based email verification & password reset**
-- ✅ **Redis token blacklist** for logout/session invalidation
-- ✅ **Prisma + MongoDB schema** with auth/session tables
-- ✅ **Swagger/OpenAPI docs** (non-production)
-- ✅ **Jest + Supertest setup** with auth and health tests
-- ✅ **Winston logging** with rotating log files
-- ✅ **Docker + docker-compose** for app, MongoDB, Redis
+Backend API provides a complete backend infrastructure for hardware/software troubleshooting platforms:
+- **Interactive Decision Trees**: Categorized diagnostic flows where users answer binary (YES/NO) questions leading either to follow-up questions or actionable recommended fixes.
+- **Troubleshooting Sessions**: State-persisted sessions capturing user progress step-by-step, full choice history (`historyPath`), and resolution status (`IN_PROGRESS`, `SOLVED`).
+- **Unassisted Custom Assistance**: When decision trees do not resolve an issue, users can submit custom questions attached with uploaded screenshots (`Multer` + `Sharp`). Admins review and reply directly.
+- **Support System**: Direct contact messaging for general support inquiries.
+- **Admin Management & Dashboard**: Category management, decision tree builder APIs, draft/publish status toggles, user status management, and dashboard activity metrics.
+
+---
+
+## Key Features
+
+- ✅ **Express 5 & TypeScript Architecture**: Strictly typed, modular feature-layer codebase.
+- ✅ **JWT Authentication & Token Revocation**: Short-lived Access Tokens, Refresh Token rotation in DB, and instant logout token blacklisting via **Redis**.
+- ✅ **Role-Based Authorization**: Fine-grained access control (`USER`, `SUPER_ADMIN`).
+- ✅ **OTP Email Flow**: 6-digit OTP codes via Nodemailer for account verification and two-step password reset.
+- ✅ **Decision Tree Engine**: Dynamic graph traversal with session persistence and history logging.
+- ✅ **Image Upload Processing**: Integrated file upload pipeline with MIME type checking, extension validation (`JPEG`, `PNG`, `WEBP`), and optimized buffer storage via `Sharp`.
+- ✅ **Swagger / OpenAPI Documentation**: Pre-configured interactive documentation interface at `/api/docs` (available in non-production).
+- ✅ **Winston Logging**: Structured log files with daily rotation for operational info and errors.
+- ✅ **CLI Scaffold Tool**: Generator script to instantly bootstrap new modular routes, controllers, services, and schemas.
+- ✅ **Container Readiness**: Multi-stage `Dockerfile` and `docker-compose.yml` bundling API server, MongoDB 7, and Redis 7.
 
 ---
 
 ## Tech Stack
 
-- **Runtime:** Node.js
-- **Framework:** Express 5
-- **Language:** TypeScript
-- **ORM/Database:** Prisma + MongoDB
-- **Cache/Session Utility:** Redis (`ioredis`)
-- **Validation:** Zod
-- **Security:** helmet, hpp, express-rate-limit, JWT
-- **Docs:** swagger-jsdoc + swagger-ui-express
-- **Testing:** Jest + Supertest + ts-jest
-- **Logging:** Winston + daily rotate file
-- **Containers:** Docker (multi-stage, hardened runtime) + docker-compose
+- **Runtime Environment:** Node.js (v20+ recommended)
+- **Web Framework:** Express 5
+- **Programming Language:** TypeScript 5.9
+- **Database & ORM:** MongoDB + Prisma ORM 6.19
+- **In-Memory Cache & Session Blacklist:** Redis (`ioredis` 5.10)
+- **Authentication & Security:** JWT (`jsonwebtoken`), Bcryptjs, Helmet, HPP, Express Rate Limit
+- **Validation Engine:** Zod 4.3
+- **File Upload & Image Processing:** Multer 2.0 + Sharp 0.34
+- **Mail Service:** Nodemailer 7.0
+- **API Documentation:** Swagger UI Express 5.0 + Swagger JSDoc 6.2
+- **Logging:** Winston 3.19 + Winston Daily Rotate File 5.0
+- **Containerization:** Docker & Docker Compose
 
 ---
 
-## Architecture & Folder Layout
+## Architecture & Directory Structure
 
-This project follows a **feature module architecture**.
-Each module owns its route, validation, controller, and service layers.
+This project follows a **Feature Module Architecture**. Each domain entity resides within its own folder containing interfaces, schemas, services, controllers, and routes.
 
 ```text
-src/
-├── app/
-│   ├── middlewares/
-│   │   ├── auth.ts
-│   │   ├── globalErrorHandler.ts
-│   │   ├── validateRequest.ts
-│   │   └── validateImageContent.ts
-│   ├── modules/
-│   │   └── Auth/
-│   │       ├── auth.interface.ts
-│   │       ├── auth.validation.ts
-│   │       ├── auth.service.ts
-│   │       ├── auth.controller.ts
-│   │       └── auth.route.ts
-│   ├── routes/
-│   │   └── index.ts
-│   └── db/
-│       └── seed.ts
-├── config/
-│   └── index.ts
-├── lib/
-│   ├── prisma.ts
-│   ├── redisConnection.ts
-│   └── swagger.ts
-├── shared/
-│   ├── catchAsync.ts
-│   ├── sendResponse.ts
-│   └── emails/
-├── utils/
-│   └── logger/
-├── app.ts
-└── server.ts
+d:/pocotech26-backend/
+├── prisma/
+│   └── schema.prisma         # Prisma schema definition for MongoDB
+├── scripts/
+│   └── create-module.js      # CLI module scaffolding generator script
+├── src/
+│   ├── app/
+│   │   ├── db/               # Database seeder (seed.ts)
+│   │   ├── helpers/          # File uploader and helper functions
+│   │   ├── middlewares/      # Auth, Rate limiting, Validation, Error handler
+│   │   ├── modules/          # Feature Modules
+│   │   │   ├── Auth/         # Authentication & OTP verification
+│   │   │   ├── Category/     # Troubleshooting categories
+│   │   │   ├── Dashboard/    # Admin metrics & analytics
+│   │   │   ├── DecisionTree/ # Diagnostic tree engine & session traversal
+│   │   │   ├── Subcategory/  # Subcategory management
+│   │   │   ├── Support/      # Support messaging tickets
+│   │   │   ├── User/         # Profile & user management
+│   │   │   └── UserQuestion/ # Custom user troubleshooting inquiries
+│   │   └── routes/           # Central API router registry
+│   ├── config/               # Environment variable configuration loader
+│   ├── errors/               # Custom ApiError class & handler wrappers
+│   ├── interfaces/           # Global TypeScript interface definitions
+│   ├── lib/                  # Database connections (Prisma, Redis) & Swagger setup
+│   ├── shared/               # Shared utilities (catchAsync, sendResponse, email templates)
+│   ├── utils/                # Logger instance & utility helpers
+│   ├── app.ts                # Express application configuration
+│   └── server.ts             # Application entry point & process listeners
+├── Dockerfile                # Multi-stage production container setup
+├── docker-compose.yml        # Services definition (app, mongo, redis)
+├── .env.example              # Sample environment variables
+└── package.json              # Dependencies and NPM scripts
 ```
 
-Request flow:
+**Request Lifecycle:**
+```text
+Client Request
+  └── Middleware (Helmet -> CORS -> Rate Limiter -> Auth -> Validation)
+       └── Route Handler
+            └── Controller Layer (catchAsync)
+                 └── Service Layer (Business Logic)
+                      └── Database / Cache Layer (Prisma MongoDB / Redis)
+                           └── Response Helper (sendResponse JSON)
+```
+
+---
+
+## Interactive Decision Tree Engine
+
+The core domain feature of is its interactive troubleshooting engine:
 
 ```text
-Client -> Route -> Validation -> Controller -> Service -> Prisma/Redis/Email
-                                                    -> sendResponse
+               [ SubCategory ]
+                      │
+               (firstQuestion)
+                      │
+                      ▼
+               ┌──────────────┐
+               │   Question   │
+               └──────┬───────┘
+                      │
+         ┌────────────┴────────────┐
+         │ YES                     │ NO
+         ▼                         ▼
+  ┌──────────────┐          ┌──────────────┐
+  │ Route: Next  │          │ Route: Next  │
+  │ Question OR  │          │ Question OR  │
+  │ Answer Fix   │          │ Answer Fix   │
+  └──────────────┘          └──────────────┘
 ```
+
+1. **Graph Setup (Admin)**: An admin builds a troubleshooting flow per subcategory consisting of `Question`, `QuestionRoute` (option: `YES` / `NO`), and `Answer` (fields: `whatsHappening` & `recommendedFix`).
+2. **Session Initialization (`POST /session/start`)**: Creates a `UserTreeSession` starting at `firstQuestionId`.
+3. **Step Traversal (`POST /traverse`)**: Accepts user response (`YES` or `NO`) for current question:
+   - Appends current step choice to `historyPath`.
+   - If next route points to a `Question`, advances `currentQuestionId` and increments `currentStep`.
+   - If next route points to an `Answer`, sets `finalAnswerId`, returns the resolution, and updates status to `SOLVED`.
+4. **Resolution (`POST /session/resolve`)**: Allows users to manually mark a session as solved at any stage.
 
 ---
 
-## Quick Start (Local)
+## Comprehensive API Endpoints Reference
 
-### 1) Prerequisites
+Base API Path: `/api/v1`
 
-- Node.js **20+** (22 recommended)
-- MongoDB running locally or Atlas URL
-- Redis running locally or remote
-- npm
-- (Optional) Gmail App Password for OTP email sending
+### 1. Auth Module (`/api/v1/auth`)
 
-### 2) Install dependencies
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/register` | Public | Register new account and trigger email verification OTP |
+| `POST` | `/auth/login` | Public | Authenticate user; returns Access Token & Refresh Token |
+| `POST` | `/auth/refresh-token` | Public | Issue new Access Token using valid Refresh Token |
+| `POST` | `/auth/logout` | `USER`, `SUPER_ADMIN` | Revoke Refresh Token & blacklist Access Token in Redis |
+| `POST` | `/auth/verify-email` | Public | Verify user email with 6-digit OTP |
+| `POST` | `/auth/resend-otp` | Public | Resend verification or password reset OTP |
+| `POST` | `/auth/forgot-password` | Public | Send password reset OTP (user-enumeration safe) |
+| `POST` | `/auth/verify-otp` | Public | Verify reset OTP; returns short-lived reset token |
+| `POST` | `/auth/reset-password` | Public | Reset password using valid reset token |
+| `POST` | `/auth/change-password` | `USER`, `SUPER_ADMIN` | Change current user password |
+| `GET` | `/auth/me` | `USER`, `SUPER_ADMIN` | Get authenticated user profile |
+| `DELETE`| `/auth/me` | `USER`, `SUPER_ADMIN` | Self-delete user account |
+| `DELETE`| `/auth/delete-me` | `USER`, `SUPER_ADMIN` | Alias for self-delete user account |
 
-```bash
-npm install
-```
+### 2. User Management (`/api/v1/users`)
 
-### 3) Configure environment
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `PATCH` | `/users/me` | `USER`, `SUPER_ADMIN` | Update profile data & upload `profilePicture` image |
+| `GET` | `/users` | `SUPER_ADMIN` | Fetch paginated list of all users |
+| `GET` | `/users/:id` | `SUPER_ADMIN` | Fetch details of a specific user by ID |
+| `PATCH` | `/users/:id/status` | `SUPER_ADMIN` | Toggle user active status (`ACTIVE` or `BLOCKED`) |
 
-```bash
-cp .env.example .env
-```
+### 3. Category Module (`/api/v1/categories`)
 
-Then update `.env` values (at minimum):
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/categories` | `SUPER_ADMIN` | Create a new diagnostic category |
+| `GET` | `/categories` | `USER`, `SUPER_ADMIN` | Fetch all categories with nested subcategories |
+| `GET` | `/categories/:id` | `USER`, `SUPER_ADMIN` | Fetch single category details by ID |
+| `GET` | `/categories/:id/subcategories` | `USER`, `SUPER_ADMIN` | Fetch subcategories belonging to category |
+| `PATCH` | `/categories/:id` | `SUPER_ADMIN` | Update category title and subtitle |
+| `DELETE`| `/categories/:id` | `SUPER_ADMIN` | Delete category and cascade subcategories |
 
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `JWT_REFRESH_SECRET`
+### 4. Subcategory Module (`/api/v1/subcategories`)
 
-### 4) Generate Prisma client and sync schema
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/subcategories/category/:categoryId` | `USER`, `SUPER_ADMIN` | Fetch subcategories by category ID |
 
-```bash
-npm run prisma:generate
-npx prisma db push
-```
+### 5. Decision Tree Engine (`/api/v1/decision-tree`)
 
-> This project uses MongoDB. Use `prisma db push` for schema sync.
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/decision-tree/subcategories/:subcategoryId` | `USER`, `SUPER_ADMIN` | Get complete decision tree graph for subcategory |
+| `POST` | `/decision-tree/subcategories/:subcategoryId` | `SUPER_ADMIN` | Create decision tree structure for subcategory |
+| `PUT` | `/decision-tree/subcategories/:subcategoryId` | `SUPER_ADMIN` | Update decision tree structure for subcategory |
+| `PATCH` | `/decision-tree/subcategories/:subcategoryId/status` | `SUPER_ADMIN` | Toggle tree publish state (`isDraft`: true/false) |
+| `DELETE`| `/decision-tree/subcategories/:subcategoryId` | `SUPER_ADMIN` | Delete decision tree structure for subcategory |
+| `POST` | `/decision-tree/session/start` | `USER`, `SUPER_ADMIN` | Start a new troubleshooting tree session |
+| `POST` | `/decision-tree/session/restart` | `USER`, `SUPER_ADMIN` | Restart existing tree session from step 1 |
+| `POST` | `/decision-tree/traverse` | `USER`, `SUPER_ADMIN` | Step forward in tree selecting `YES` or `NO` option |
+| `POST` | `/decision-tree/session/resolve` | `USER`, `SUPER_ADMIN` | Mark session status manually as `SOLVED` |
+| `GET` | `/decision-tree/session/:sessionId` | `USER`, `SUPER_ADMIN` | Fetch active or historical session details |
+| `GET` | `/decision-tree/history` | `USER`, `SUPER_ADMIN` | Get user session history (`IN_PROGRESS` / `SOLVED`) |
+| `GET` | `/decision-tree/user-stats` | `USER`, `SUPER_ADMIN` | Get user troubleshooting statistics |
 
-### 5) (Optional) Seed default users
+### 6. User Questions (`/api/v1/user-questions`)
 
-```bash
-npm run prisma:seed
-```
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/user-questions` | `USER` | Submit custom troubleshooting question with optional image |
+| `GET` | `/user-questions/my-questions` | `USER` | List logged-in user's submitted questions & replies |
+| `GET` | `/user-questions` | `SUPER_ADMIN` | Fetch all user questions across platform |
+| `GET` | `/user-questions/:id` | `USER`, `SUPER_ADMIN` | Fetch details of a single user question |
+| `POST` | `/user-questions/:id/reply` | `SUPER_ADMIN` | Submit admin response and update status to `ANSWERED` |
 
-Default seeded accounts:
+### 7. Support Tickets (`/api/v1/support`)
 
-- `superadmin@example.com / SuperAdmin@123`
-- `admin@example.com / Admin@123`
-- `user@example.com / User@123`
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/support` | `USER` | Submit a general support request message |
+| `GET` | `/support` | `SUPER_ADMIN` | Fetch all support ticket messages |
+| `GET` | `/support/:id` | `SUPER_ADMIN` | Fetch single support ticket details |
 
-### 6) Start in development mode
+### 8. Dashboard & Analytics (`/api/v1/dashboard`)
 
-```bash
-npm run dev
-```
-
-### 7) Verify everything is running
-
-- Root: `GET http://localhost:8000/`
-- Health: `GET http://localhost:8000/api/v1/health`
-- Swagger (dev only): `http://localhost:8000/api/docs`
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/dashboard/summary` | `SUPER_ADMIN` | System overview stats (users, trees, solved sessions, etc.) |
+| `GET` | `/dashboard/recent-activities` | `SUPER_ADMIN` | Feed of recent platform user activities |
+| `GET` | `/dashboard/most-used-categories` | `USER`, `SUPER_ADMIN` | Analytics on most navigated troubleshooting categories |
+| `GET` | `/dashboard/user-stats` | `USER`, `SUPER_ADMIN` | Resolution and session metrics |
 
 ---
 
-## Quick Start (Docker)
+## Database Schema & Prisma Models
 
-### 1) Prepare environment file
+The database schema (`prisma/schema.prisma`) uses MongoDB with the following core entities:
 
-```bash
-cp .env.example .env
+- **User**: User accounts (`email`, `password`, `role`: `USER` / `SUPER_ADMIN`, `status`: `ACTIVE` / `BLOCKED`, `isEmailVerified`).
+- **OtpToken**: 6-digit OTP records (`purpose`: `EMAIL_VERIFICATION` / `PASSWORD_RESET`, `expiresAt`, `used`).
+- **RefreshToken**: Active refresh tokens linked to users.
+- **Category**: Top-level troubleshooting categories (`title`, `subtitle`, `isSystem`).
+- **SubCategory**: Subcategories belonging to a Category (`firstQuestionId`, `isDraft`).
+- **Question**: Diagnostic question node belonging to a SubCategory.
+- **Answer**: Outcome solution node (`whatsHappening`, `recommendedFix`).
+- **QuestionRoute**: Directed edges linking a `Question` via `YES`/`NO` to either another `Question` or an `Answer`.
+- **UserQuestion**: Custom user submitted queries (`description`, `image`, `status`: `PENDING` / `ANSWERED`, `adminReply`).
+- **Support**: General inquiry support tickets (`name`, `email`, `subject`, `message`, `status`: `PENDING` / `RESOLVED`).
+- **UserTreeSession**: User diagnostic session tracking (`currentStep`, `status`: `IN_PROGRESS` / `SOLVED`, `historyPath` JSON snapshot).
+
+---
+
+## Request / Response Format
+
+### Success Response Format
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Operation completed successfully.",
+  "data": {}
+}
 ```
 
-Recommended updates in `.env` for Docker usage:
-
-- `PORT=8000`
-- valid JWT secrets
-- optional email credentials
-
-### 2) Build and run all services
-
-```bash
-docker compose up --build -d
-```
-
-This starts:
-
-- `app` (backend API)
-- `mongo` (MongoDB 7)
-- `redis` (Redis 7)
-
-### 3) Check status and logs
-
-```bash
-docker compose ps
-docker compose logs -f app
-```
-
-### 4) Stop services
-
-```bash
-docker compose down
-```
-
-To remove volumes as well:
-
-```bash
-docker compose down -v
+### Error Response Format
+```json
+{
+  "statusCode": 400,
+  "success": false,
+  "message": "Validation Error",
+  "errorMessages": [
+    {
+      "path": "email",
+      "message": "Invalid email address."
+    }
+  ]
+}
 ```
 
 ---
 
 ## Environment Variables
 
-Copy from `.env.example` and update as needed.
+Copy `.env.example` to `.env` in the root directory and configure:
 
-| Variable                 | Required | Default                 | Purpose                                      |
-| ------------------------ | -------- | ----------------------- | -------------------------------------------- |
-| `NODE_ENV`               | No       | `development`           | App environment (`development`/`production`) |
-| `PORT`                   | No       | `8000`                  | Server port                                  |
-| `HOST`                   | No       | `0.0.0.0`               | Server bind host                             |
-| `APP_NAME`               | No       | `Backend Starter Pack`  | Display name in root/Swagger                 |
-| `APP_VERSION`            | No       | `1.0.0`                 | Version metadata                             |
-| `FRONTEND_URL`           | No       | `http://localhost:3000` | Frontend reference URL                       |
-| `BACKEND_URL`            | No       | `http://localhost:8000` | Backend reference URL                        |
-| `DATABASE_URL`           | **Yes**  | —                       | MongoDB connection string                    |
-| `JWT_SECRET`             | **Yes**  | —                       | Access token secret                          |
-| `JWT_REFRESH_SECRET`     | **Yes**  | —                       | Refresh token secret                         |
-| `JWT_EXPIRES_IN`         | No       | `15m`                   | Access token TTL                             |
-| `JWT_REFRESH_EXPIRES_IN` | No       | `7d`                    | Refresh token TTL                            |
-| `REDIS_HOST`             | No       | `127.0.0.1`             | Redis host                                   |
-| `REDIS_PORT`             | No       | `6379`                  | Redis port                                   |
-| `REDIS_PASSWORD`         | No       | empty                   | Redis password                               |
-| `EMAIL_SENDER_EMAIL`     | No       | empty                   | Sender email                                 |
-| `EMAIL_SENDER_APP_PASS`  | No       | empty                   | Gmail App Password                           |
-| `PASSWORD_SALT`          | No       | `12`                    | Bcrypt salt rounds                           |
-| `CORS_ORIGIN`            | No       | `*` / env value         | Allowed origins (comma-separated in prod)    |
-| `RATE_LIMIT_WINDOW_MS`   | No       | `900000`                | Rate-limit window                            |
-| `RATE_LIMIT_MAX`         | No       | `100`                   | General API requests/window                  |
-| `RATE_LIMIT_AUTH_MAX`    | No       | `10`                    | Auth attempts/window                         |
+| Variable | Required | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `NODE_ENV` | No | `development` | Environment mode (`development` / `production`) |
+| `PORT` | No | `8000` | HTTP server listening port |
+| `HOST` | No | `0.0.0.0` | Bind host address |
+| `APP_NAME` | No | `Backend` | Display application title |
+| `APP_VERSION` | No | `1.0.0` | Application version string |
+| `DATABASE_URL` | **Yes** | — | MongoDB connection string URI |
+| `JWT_SECRET` | **Yes** | — | Secret string for signing Access Tokens |
+| `JWT_REFRESH_SECRET` | **Yes** | — | Secret string for signing Refresh Tokens |
+| `JWT_EXPIRES_IN` | No | `15m` | Access token lifespan (e.g. `15m`, `1d`) |
+| `JWT_REFRESH_EXPIRES_IN` | No | `7d` | Refresh token lifespan (e.g. `7d`) |
+| `REDIS_HOST` | No | `127.0.0.1` | Redis instance host |
+| `REDIS_PORT` | No | `6379` | Redis instance port |
+| `REDIS_PASSWORD` | No | empty | Redis connection password |
+| `EMAIL_SENDER_EMAIL` | No | empty | Gmail/SMTP sender address |
+| `EMAIL_SENDER_APP_PASS` | No | empty | App password for SMTP sender |
+| `PASSWORD_SALT` | No | `12` | Bcrypt password hashing salt rounds |
+| `CORS_ORIGIN` | No | `*` | Allowed CORS origins |
+| `RATE_LIMIT_MAX` | No | `100` | Max requests per rate-limit window |
+| `RATE_LIMIT_AUTH_MAX` | No | `10` | Max auth requests per window |
 
 ---
 
-## Available Scripts
+## Quick Start Guide
 
-| Script                                     | What it does                                           |
-| ------------------------------------------ | ------------------------------------------------------ |
-| `npm run dev`                              | Start development server with auto-restart             |
-| `npm run build`                            | Compile TypeScript to `dist/`                          |
-| `npm run start`                            | Run compiled server from `dist/server.js`              |
-| `npm run lint`                             | Run ESLint on `src` and auto-fix                       |
-| `npm run format`                           | Run Prettier on `src/**/*.ts`                          |
-| `npm run module:create -- <Name>`          | Generate a new module scaffold and auto-register route |
-| `npm run module:create:no-route -- <Name>` | Generate module scaffold without route registration    |
-| `npm run prisma:generate`                  | Generate Prisma client                                 |
-| `npm run prisma:migrate`                   | Prisma migrate command (mostly for SQL setups)         |
-| `npm run prisma:studio`                    | Open Prisma Studio                                     |
-| `npm run prisma:seed`                      | Seed default users                                     |
-| `npm test`                                 | Run tests in-band                                      |
-| `npm run test:watch`                       | Run tests in watch mode                                |
-| `npm run test:coverage`                    | Generate coverage report                               |
+### 1. Prerequisites
 
----
+- **Node.js**: v20+ installed
+- **MongoDB**: Active local instance or MongoDB Atlas cluster URL
+- **Redis**: Running local Redis server or Redis cloud instance
+- **npm** package manager
 
-## API & Swagger
+### 2. Local Setup
 
-### Base URL
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-```text
-http://localhost:8000/api/v1
-```
+2. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and supply DATABASE_URL, JWT_SECRET, and JWT_REFRESH_SECRET
+   ```
 
-### Swagger docs
+3. **Generate Prisma Client & Sync Database:**
+   ```bash
+   npm run gen
+   npm run push
+   ```
 
-- UI: `http://localhost:8000/api/docs`
-- JSON: `http://localhost:8000/api/docs.json`
+4. **(Optional) Seed Default Seed Accounts:**
+   ```bash
+   npm run prisma:seed
+   ```
+   *Seeded default credentials:*
+   - Super Admin: `superadmin@example.com` / `SuperAdmin@123`
+   - Admin: `admin@example.com` / `Admin@123`
+   - User: `user@example.com` / `User@123`
 
-> Swagger is enabled only when `NODE_ENV !== production`.
+5. **Start Development Server:**
+   ```bash
+   npm run dev
+   ```
+   - API Root: `http://localhost:8000/`
+   - Health Endpoint: `http://localhost:8000/api/v1/health`
+   - Interactive Swagger Docs: `http://localhost:8000/api/docs`
 
-### Auth in Swagger
+### 3. Docker Setup
 
-1. Call `POST /auth/login`
-2. Copy `accessToken`
-3. Click **Authorize** in Swagger UI
-4. Paste token as `Bearer <accessToken>`
-
----
-
-## Auth Module Guide
-
-Auth routes are mounted under:
-
-```text
-/api/v1/auth
-```
-
-### Endpoint summary
-
-| Method | Path               | Protected | Description                                        |
-| ------ | ------------------ | --------- | -------------------------------------------------- |
-| `POST` | `/register`        | No        | Register user and send email verification OTP      |
-| `POST` | `/login`           | No        | Login and receive access + refresh tokens          |
-| `POST` | `/refresh-token`   | No        | Rotate refresh token and issue new access token    |
-| `POST` | `/logout`          | Yes       | Blacklist access token and delete refresh token    |
-| `POST` | `/verify-email`    | No        | Verify email using OTP                             |
-| `POST` | `/resend-otp`      | No        | Resend OTP for email verification/password reset   |
-| `POST` | `/forgot-password` | No        | Send password reset OTP (no user-enumeration leak) |
-| `POST` | `/verify-otp`      | No        | Verify reset OTP and receive a short-lived token   |
-| `POST` | `/reset-password`  | No        | Reset password using reset token                   |
-| `POST` | `/change-password` | Yes       | Change password with old password                  |
-| `GET`  | `/me`              | Yes       | Get current profile                                |
-
-### OTP behavior
-
-- OTP validity is **10 minutes**
-- Old unused OTPs for same purpose are invalidated when a new OTP is created
-- Password reset flow is two-step: verify OTP first, then reset with short-lived token
-- Reset password revokes all refresh tokens
-
-### Typical auth flow (recommended)
-
-1. Register
-2. Verify email using OTP
-3. Login
-4. Use access token for protected routes
-5. Refresh token when access token expires
-6. Logout to invalidate token
-
-### Password reset flow
-
-1. Call `POST /forgot-password` with email
-2. Call `POST /verify-otp` with email + OTP to receive `resetToken`
-3. Call `POST /reset-password` with `resetToken` + `newPassword`
-
-### Example requests
-
-Register:
+Build and run the entire stack (API, MongoDB 7, Redis 7) in isolated containers:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "secret123"
-  }'
-```
+# 1. Create environment configuration
+cp .env.example .env
 
-Verify email:
+# 2. Build and launch services in background
+docker compose up --build -d
 
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/verify-email \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "otp": "123456"
-  }'
-```
+# 3. View running container status
+docker compose ps
 
-Login:
+# 4. Stream application container logs
+docker compose logs -f app
 
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "secret123"
-  }'
-```
-
-Get profile (`/me`):
-
-```bash
-curl -X GET http://localhost:8000/api/v1/auth/me \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Refresh token:
-
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/refresh-token \
-  -H "Content-Type: application/json" \
-  -d '{"refreshToken": "<REFRESH_TOKEN>"}'
+# 5. Shutdown services
+docker compose down
 ```
 
 ---
 
-## Request/Response Pattern
+## CLI Module Scaffold Generator
 
-### Success response shape
-
-```json
-{
-  "success": true,
-  "message": "Login successful.",
-  "data": {}
-}
-```
-
-### Error response shape
-
-```json
-{
-  "success": false,
-  "message": "Invalid token. Please log in again.",
-  "errorMessages": [
-    {
-      "path": "token",
-      "message": "jwt malformed"
-    }
-  ]
-}
-```
-
-### Validation behavior
-
-- Request body validation uses Zod
-- Invalid payloads return `400` with structured error messages
-- Global error handler normalizes known Prisma/JWT/Multer/Syntax errors
-
----
-
-## How to Add a New Module
-
-Use the generator script (recommended):
+This repository includes an automated code generator to quickly scaffold new feature modules following the project's layered architecture:
 
 ```bash
-npm run module:create -- Book
+# Scaffold a new module (Interface, Validation, Service, Controller, Route + Auto-register in routes/index.ts)
+npm run module:create -- Diagnostic
+
+# Scaffold without auto-registering route
+npm run module:create:no-route -- Ticket
+
+# Force overwrite existing module files
+npm run module:create -- Diagnostic --force
 ```
 
-This command creates:
-
-1. `src/app/modules/Book/book.interface.ts`
-2. `src/app/modules/Book/book.validation.ts`
-3. `src/app/modules/Book/book.service.ts`
-4. `src/app/modules/Book/book.controller.ts`
-5. `src/app/modules/Book/book.route.ts`
-6. Route registration in `src/app/routes/index.ts` as `/book`
-
-More options:
-
-```bash
-# create module files but do not auto-register route
-npm run module:create:no-route -- Product
-
-# same behavior as module:create with explicit flag
-npm run module:create -- Product --no-route
-
-# overwrite existing generated files
-npm run module:create -- Product --force
-```
-
-After generation:
-
-1. Implement business logic in `*.service.ts`
-2. Adjust validation schema in `*.validation.ts`
-3. Update route auth/access rules in `*.route.ts`
-4. (Optional) Extend Swagger definitions in `src/lib/swagger.ts`
-5. Add tests under `src/__tests__/`
-
-Recommended rule: **controller thin, service heavy**.
-
----
-
-## Database & Prisma Notes
-
-### Current Prisma models
-
-- `User`
-- `OtpToken`
-- `RefreshToken`
-- `Post`
-
-### For MongoDB users
-
-Use:
-
-```bash
-npx prisma db push
-```
-
-Useful commands:
-
-```bash
-npm run prisma:generate
-npm run prisma:studio
-npm run prisma:seed
-```
-
----
-
-## Testing Guide
-
-### Run tests
-
-```bash
-npm test
-```
-
-### Watch mode
-
-```bash
-npm run test:watch
-```
-
-### Coverage
-
-```bash
-npm run test:coverage
-```
-
-### Existing test focus
-
-- Health endpoints
-- Auth validation checks
-- Unauthorized/invalid token behavior
-- Forgot-password user-enumeration-safe response behavior
-
----
-
-## Logging Guide
-
-Logs are stored in the `logs/` directory.
-
-- `info-YYYY-MM-DD.log`
-- `error-YYYY-MM-DD.log`
-
-Features:
-
-- Console logging with readable format
-- JSON file logs for machine processing
-- Daily rotation
-- Separate retention for info/error logs
+Generates:
+1. `src/app/modules/Diagnostic/diagnostic.interface.ts`
+2. `src/app/modules/Diagnostic/diagnostic.validation.ts`
+3. `src/app/modules/Diagnostic/diagnostic.service.ts`
+4. `src/app/modules/Diagnostic/diagnostic.controller.ts`
+5. `src/app/modules/Diagnostic/diagnostic.route.ts`
+6. Automatically mounts `/api/v1/diagnostic` route in `src/app/routes/index.ts`
 
 ---
 
 ## Security Features
 
-- Helmet headers
-- CORS with production-origin support
-- HPP (HTTP Parameter Pollution) protection
-- JSON/body size limits (`10mb`)
-- General rate limit on `/api`
-- Strict auth rate limit on login/register/forgot-password/resend-otp
-- JWT verification with clear expiration/invalid token handling
-- Role-based route protection middleware
-- Redis blacklist for invalidated tokens
-- Account active-state checks during auth
+- **HTTP Headers Security**: Hardened HTTP headers using `Helmet`.
+- **Cross-Origin Resource Sharing (CORS)**: Configurable origin controls.
+- **HTTP Parameter Pollution (HPP)**: Protection against parameter pollution attacks.
+- **Rate Limiting**: Tiered limiters protecting auth endpoints from brute-force attempts.
+- **Token Invalidation**: Instant logout using Redis token revocation storage.
+- **Input Sanitization & Validation**: Request payload filtering using strict Zod schemas.
 
 ---
 
-## Troubleshooting (If You Get Stuck)
+## Logging System
 
-### 1) App exits immediately with missing env error
+Application runtime logs are formatted by `Winston` and persisted under the `logs/` directory with automatic daily rotation:
 
-Cause: Required env vars are missing.
-
-Fix:
-
-1. Ensure `.env` exists
-2. Set `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`
-3. Restart server
-
-### 2) `PrismaClientInitializationError` or DB unreachable
-
-Cause: MongoDB not running or bad URL.
-
-Fix:
-
-```bash
-# local Mongo check (if installed locally)
-mongosh
-```
-
-Then verify `DATABASE_URL` and rerun:
-
-```bash
-npx prisma db push
-```
-
-### 3) Redis connection warnings/errors
-
-Cause: Redis not running or wrong host/port/password.
-
-Fix:
-
-```bash
-# local Redis check
-redis-cli ping
-```
-
-Expected: `PONG`
-
-### 4) OTP email is not sent
-
-Cause: Gmail credentials missing/invalid.
-
-Fix:
-
-- Set `EMAIL_SENDER_EMAIL`
-- Set `EMAIL_SENDER_APP_PASS` (App Password, not normal account password)
-- Check logs in `logs/error-*.log`
-
-### 5) `401 Invalid token` on protected routes
-
-Checklist:
-
-- Use `Authorization: Bearer <ACCESS_TOKEN>`
-- Ensure token is not expired
-- Ensure token is not blacklisted after logout
-- Try `POST /auth/refresh-token` with valid refresh token
-
-### 6) Frequent `429 Too many requests`
-
-Cause: Rate limiter triggered.
-
-Fix:
-
-- Wait for limiter window reset
-- Increase `RATE_LIMIT_MAX` and `RATE_LIMIT_AUTH_MAX` in dev
-
-### 7) Swagger page not visible
-
-Cause: Running in production mode.
-
-Fix:
-
-- Swagger is disabled when `NODE_ENV=production`
-- Run locally with `NODE_ENV=development`
-
-### 8) Docker build works but app not healthy
-
-Checklist:
-
-- `docker compose logs -f app`
-- confirm Mongo and Redis are healthy: `docker compose ps`
-- check `.env` secrets and connection settings
-- verify app responds: `curl http://localhost:8000/api/v1/health`
-
-### 9) Seed command fails
-
-Cause: DB not reachable or schema/client mismatch.
-
-Fix:
-
-```bash
-npm run prisma:generate
-npx prisma db push
-npm run prisma:seed
-```
+- `logs/info-YYYY-MM-DD.log`: Information level logs
+- `logs/error-YYYY-MM-DD.log`: Stack traces and runtime error details
 
 ---
 
 ## Production Deployment Checklist
 
-Before going live:
-
-- [ ] Set strong `JWT_SECRET` and `JWT_REFRESH_SECRET`
-- [ ] Set `NODE_ENV=production`
-- [ ] Set restricted `CORS_ORIGIN`
-- [ ] Use managed MongoDB and Redis with authentication
-- [ ] Ensure HTTPS at load balancer/proxy level
-- [ ] Keep OTP sender credentials secure (secret manager)
-- [ ] Monitor `logs/error-*.log` and integrate external observability
-- [ ] Run `npm run build` and tests before deployment
-- [ ] Validate health endpoint in deployment pipeline
-
----
-
-## Final Notes
-
-If you want to extend quickly, start by cloning the Auth module pattern and keep the same layering:
-
-- `validation -> controller -> service -> prisma`
-
-This keeps the codebase predictable and easy to maintain for teams.
+- [ ] Set `NODE_ENV=production` in environment variables.
+- [ ] Specify strong, unpredictable values for `JWT_SECRET` and `JWT_REFRESH_SECRET`.
+- [ ] Configure `CORS_ORIGIN` with exact production domain origins.
+- [ ] Use SSL/TLS termination at load balancer or reverse proxy (Nginx/Cloudflare).
+- [ ] Utilize managed MongoDB (Atlas) and Redis cluster instances with auth credentials.
+- [ ] Verify Nodemailer SMTP settings for OTP delivery.
+- [ ] Build the TypeScript application using `npm run build` and run production start script `npm run start`.
