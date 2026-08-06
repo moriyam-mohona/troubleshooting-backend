@@ -18,7 +18,6 @@ uploads/
 Thumbs.db
 
 # IDE
-.vscode/settings.json
 .idea/
 
 # Testing
@@ -30,3 +29,4 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
+config.bat

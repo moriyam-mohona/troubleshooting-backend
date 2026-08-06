@@ -4,14 +4,13 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "start": "node init && node dist/server.js",
+    "dev": "node init && ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "node init && tsc",
     "lint": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "module:create": "node scripts/create-module.js",
     "module:create:no-route": "node scripts/create-module.js --no-route",
-
     "gen": "prisma generate",
     "push": "prisma db push",
     "studio": "prisma studio",
